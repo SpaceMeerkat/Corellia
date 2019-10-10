@@ -34,7 +34,7 @@ class cube_generator:
                 self.beamsize=[4.,4.,0.]
                 
         def surface_brightness_profile(self):
-                self.scale_length = self.extent / self.scale_length_frac
+                self.scale_length = self.extent * self.scale_length_frac
                 radii = np.linspace(0,self.extent,self.resolution)
                 sbProf = np.exp(-radii/self.scale_length)
                 return radii,sbProf
