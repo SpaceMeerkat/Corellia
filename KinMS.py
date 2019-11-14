@@ -159,7 +159,7 @@ class KinMS:
 
     def kinms_sampleFromArbDist_oneSided(self, sbRad, sbProf, nSamps, diskThick, fixSeed=None):
 
-        start = time.time()
+        #start = time.time()
 
         if self.verbose: print('Generating cloudlets,', end=' ')
 
@@ -222,8 +222,8 @@ class KinMS:
         inClouds[:,1] = yPos
         inClouds[:,2] = zPos
                
-        end = time.time()
-        duration = end-start
+        #end = time.time()
+        #duration = end-start
         #print('kinms_sampleFromArbDist_oneSided duration: ', duration)
 
         return inClouds
@@ -235,7 +235,7 @@ class KinMS:
     def kinms_create_velField_oneSided(self, velRad, velProf, r_flat, inc, posAng, gasSigma, xPos, yPos, fixSeed=None,
                                        vPhaseCent=None, vRadial=None, posAng_rad=None, inc_rad=None, vPosAng=None):
             
-        start = time.time()
+        #start = time.time()
         
         ### MAKE EVERYTHING AN ARRAY IN HERE RATHER THAN A LIST OR DOUBLE ###
         
@@ -312,8 +312,8 @@ class KinMS:
         los_vel += vRadial_rad * (np.sin(np.arctan2((yPos+vPhaseCent[1]),(xPos + vPhaseCent[0])) + (np.radians(ang2rot))) * np.sin(np.radians(inc_rad)))
         # Output the array of los velocities
         
-        end = time.time()
-        duration = end-start
+        #end = time.time()
+        #duration = end-start
         #print('kinms_create_velField_oneSided: ', duration)
         
         return los_vel
@@ -363,12 +363,11 @@ class KinMS:
     def gasGravity_velocity(self, xPos, yPos, zPos, massDist, velRad):
         
         xPos = np.array(xPos); yPos = np.array(yPos); zPos = np.array(zPos);
-        massDist = np.array(massDist); velRad = np.array(velRad)
+        massDist = np.array(massDist); velRad = np.array(velRad);
         
-        rad = np.sqrt( (xPos**2) + (yPos**2) + (zPos**2) )						                ## 3D radius
+        rad = np.sqrt((xPos**2) + (yPos**2) + (zPos**2))						                ## 3D radius
         cumMass = ((np.arange(xPos.size + 1)) * (massDist[0] / xPos.size))					    ## cumulative mass
 
-        
         #max_rad = np.argmax(rad)
         #max_velRad =  velRad[max_rad]+1
         #print(max_velRad)
@@ -376,25 +375,34 @@ class KinMS:
         #print(np.max(velRad).clip(1,max=None))
         #print(np.max(rad))
         
-        max_velRad = np.max(velRad).clip(min=np.max(rad), max=None)+1
+        max_velRad = np.max(velRad).clip(min=np.max(rad), max=None)+1 # returns the max vel_Rad clipped to above the minimum rad
         #print(max_velRad)
         
-        new_rad = np.insert(sorted(rad),0,0)
+        new_rad = np.insert(sorted(rad),0,0) #puts two 0 values at the start of rad
         
-        ptcl_rad = np.append(new_rad, max_velRad)
-        cumMass_max_end = np.append(cumMass,np.max(cumMass))
+        ptcl_rad = np.append(new_rad, max_velRad) # appends the maximum velRad to the end of the radii values
+        cumMass_max_end = np.append(cumMass,np.max(cumMass)) # places an extra max_cumMass at the end of cumMass presumably for vector length equivalency
 
-        cumMass_interFunc = interpolate.interp1d(ptcl_rad,cumMass_max_end,kind='linear')
+        cumMass_interFunc = interpolate.interp1d(ptcl_rad,cumMass_max_end,kind='linear') # interpolates the cumulative mass as a function of radii
+        
+        #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+        ### ZONE OF CONFUSION... ###############################################################################################################
+        #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+        
         if velRad[0] == 0.0:
             return 	np.append(0.0,np.sqrt((4.301e-3 * cumMass_interFunc(velRad[1:]))/(4.84 * velRad[1:] * massDist[1])))    ## return velocity
         else:
             return 	np.sqrt((4.301e-3 * cumMass_interFunc(velRad))/(4.84 * velRad * massDist[1]))
+        
+        #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
+        ########################################################################################################################################
+        #++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++#
     
     #=========================================================================#
     #/////////////////////////////////////////////////////////////////////////#
     #=========================================================================#
           
-    def model_cube(self, xs, ys, vs, cellSize, dv, beamSize, inc, gasSigma=None, diskThick=None, ra=None, dec=None,
+    def __call__(self, xs, ys, vs, cellSize, dv, beamSize, inc, gasSigma=None, diskThick=None, ra=None, dec=None,
            nSamps=None, posAng=None, intFlux=None, flux_clouds=None, vSys=None, phaseCent=None, vOffset=None, \
            vRadial=None, vPosAng=None, vPhaseCent=None, restFreq=None, sbProf=None, sbRad=None, velRad=None,
            velProf=None, inClouds=None, vLOS_clouds=None, fileName=False, fixSeed=False, cleanOut=False,
@@ -405,7 +413,7 @@ class KinMS:
         global_vars = vars(self)
         print_dict = {} # 0 = user defined, 1 = default, 2 = bool
         
-        start =  time.time()
+        #start =  time.time()
 
         for k, v in local_vars.items():
             try:
@@ -674,17 +682,19 @@ class KinMS:
             retClouds[:, 1] = y2 * cellSize
             retClouds[:, 2] = z2 * cellSize
             
-            end = time.time()
-            duration = end-start
+            #end = time.time()
+            #duration = end-start
             #print('model_cube duration: ', duration)     
 
             return cube, retClouds, los_vel
 
         else:
-            end = time.time()
-            duration = end-start
+            #end = time.time()
+            #duration = end-start
             #print('model_cube duration: ', duration) 
             return cube
+        
+    model_cube = __call__
 
     #=========================================================================#
     #/////////////////////////////////////////////////////////////////////////#
