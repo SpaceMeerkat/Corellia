@@ -17,11 +17,12 @@ class CAE(torch.nn.Module):
     
     """ PYTORCH CONVOLUTIONAL AUTOENCODER WITH A FUNCTIONAL DECODER """
                
-    def __init__(self, nodes, xx, yy):
+    def __init__(self, nodes, xx, yy, cube):
         super().__init__()
         
         self.xx = xx
         self.yy = yy
+        self.cube = cube
         
         self.nodes = nodes
         self.conv0 = torch.nn.Conv2d(120,16,3,1,padding=1)
@@ -77,15 +78,22 @@ class CAE(torch.nn.Module):
         vel = torch.sqrt(torch.pow(Vh, 2)*(1-((ah/radius_tensor)*torch.atan(radius_tensor/ah))))
         return vel
     
+    def de_regularise(self,tensor,minimum,maximum):
+        """ RECOVER THE PARAMETERS OUT OF THE NORMALISED RANGE [-1, 1] """
+        tensor+=1.
+        tensor*=(maximum-minimum)/2.
+        tensor+=minimum
+        return tensor
+    
     def cube_maker(self, x, vlim, shape, dv, v_size):
         """ GENERATE THE OUTPUT CUBE USING PYTORCH FUNCTIONS """ 
         
         ### Define the variables needed for cube modelling from input x
         pos = self.pos_ang(x[:,0].clone(),x[:,1].clone()) ### Poition angle
-        inc = x[:,2].clone() ### Inclination
-        a = torch.abs(x[:,3].clone()) ### SBprof scale length
-        ah = x[:,4].clone() ### DM halo scale length
-        Vh = x[:,5].clone() ### Maximum velocity allowed
+        inc = self.de_regularise(x[:,2].clone(),5,90) ### Inclination
+        a = self.de_regularise(x[:,3].clone(),0.1,0.4) ### SBprof scale length
+        ah = self.de_regularise(x[:,4].clone(),0.1,1) ### DM halo scale length
+        Vh = self.de_regularise(x[:,5].clone(),50,500) ### Maximum velocity allowed
         
         ### Create 2D arrays of x,y, and r values
         xx_t = self.xx*torch.cos(pos) + self.yy*torch.sin(pos)
@@ -97,16 +105,17 @@ class CAE(torch.nn.Module):
         
         ### Define the 2D V(r) given some 2D radius array
         vel = self.velocity_profile(rr_t, Vh, ah)  
-        vel *= vlim ### Scale up the velocities given some maximum velocity
-        vel *= -torch.cos(torch.atan2(xx_t,yy_t)+pos-pi)*torch.sin(inc) ### Convert to LOS velocities
+        vel *= -torch.cos(pi-torch.atan2(xx_t,yy_t)+pos)*torch.sin(inc) ### Convert to LOS velocities
         v = vel.clone() ### Velocity array is returned for later comparison to true velocity map
         vel = vel//dv ### Get channel indices of each pixel
         vel += int(v_size/2.) ### Redistribute channel values to lie in range 0-N
-        vel = torch.clamp(vel,0,v_size) ### Restrict to existing channel range         
-        
-        cube = torch.zeros((120,64,64)) ### Create an empty data cube
-        cube = torch.stack([*map(vel.__eq__,torch.unique(vel))]).type(torch.float)*(torch.stack([sbProf]*cube.shape[0])).type(torch.float) ### Fill cube
+        vel = torch.clamp(vel,0,v_size) ### Restrict to existing channel range 
+       
+        cube = self.cube.clone()
+        cube[torch.unique(vel).type(torch.LongTensor),:,:] = torch.stack([*map(vel.__eq__,torch.unique(vel))]).type(torch.float)*sbProf.type(torch.float) ### Fill cube
         cube = cube.unsqueeze(0) ### Resize cube
+        
+        cube = cube/torch.max(cube)
 
         return cube, v
         

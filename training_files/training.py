@@ -77,7 +77,7 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         
         running_loss = []
         
-        for _ in tqdm(range(5000)):
+        for _ in tqdm(range(100)):
             prediction, vel = model(batch)  
             loss = loss_function(prediction, batch)
             prediction.retain_grad()
@@ -88,12 +88,14 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
                   "\n Loss std: %f" % np.std(running_loss))
         print('_'*73)
         
+        print(torch.max(prediction), torch.max(batch))
+        
         #_________________________________________________________________________#
         #~~~ CREATE ANY PLOTS   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
         #_________________________________________________________________________#
         
         if save_dir is not None:
-            plotter(vel, batch, save_directory)
+            plotter(vel, batch, prediction, save_directory)
             
         #_________________________________________________________________________#
         #~~~ PRINT AVERAGE LAYER GRADIENTS   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -131,11 +133,13 @@ yy, xx = torch.meshgrid(torch.arange(0 - 63/2., (63/2.)+1), torch.arange(0 - 63/
 xx = xx.to(device).to(torch.float)
 yy = yy.to(device).to(torch.float)
 
-model = CAE(6,xx,yy) # Instantiate the model with 6 learnable parameters
+cube = torch.zeros((120,64,64)).to(device).to(torch.float)
+
+model = CAE(6,xx,yy,cube) # Instantiate the model with 6 learnable parameters
 
 ### Train the model
 training(model,batch_size=1,epochs=1,loss_function=torch.nn.MSELoss(),
-         initial_lr=1e-3,save_dir=save_directory)
+         initial_lr=1e-4,save_dir=save_directory)
 
 
 

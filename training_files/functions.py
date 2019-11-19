@@ -38,20 +38,18 @@ def return_cube(i):
         INCLINATIONS """
         
     pos_ang = random.uniform(0,360)
-    pos_ang = 90
-    b_over_a = random.uniform(0,1)
-    inc_ang = np.rad2deg(np.sqrt(1-(b_over_a)**2))
-    #inc_ang = random.uniform(5,90)
+    pos_ang = 0
+    inc_ang = random.uniform(5,90)
     scale_frac = random.uniform(0.1,0.4)
     ah = random.uniform(0.1,1)
-    Vh = random.uniform(50,500)
+    Vh = random.uniform(100,500)
     cube = cube_generator(scale_length_frac=scale_frac,pos_ang=pos_ang,
                           inc_ang=inc_ang,resolution=1000,ah=ah,Vh=Vh).cube_creation()
        
     cube/=cube.max()
     pos_ang = np.deg2rad(pos_ang)
         
-    return cube,np.cos(pos_ang),np.sin(pos_ang),inc_ang,scale_frac,Vh/500.
+    return cube,np.cos(pos_ang),np.sin(pos_ang),inc_ang,scale_frac,Vh
 
 #_____________________________________________________________________________#
 #_____________________________________________________________________________#
@@ -80,7 +78,7 @@ def recover_pos(theta1,theta2):
 #_____________________________________________________________________________#
     
 
-def plotter(vel, batch, out_dir):
+def plotter(vel, batch, batch2, out_dir):
     
     """ PLOTTING THE PREDICTED AND TRUE VELOCITY FIELDS """
     
@@ -90,9 +88,21 @@ def plotter(vel, batch, out_dir):
     plt.colorbar()
     plt.savefig(out_dir+'predicted.png')
     
+    batch2 = batch2.detach().cpu().numpy()
+    b = batch2[0,:,:,:]
+    b[b<3*np.std(b)]=np.nan
+    mom0 = np.nansum(b,axis=0)
+    channels = np.arange(-600,600,10)
+    num = np.nansum(np.transpose(b,(1,2,0))*channels,axis=2)
+    mom1 = num/mom0
+    plt.figure()
+    plt.imshow(mom1)
+    plt.colorbar()
+    plt.savefig(out_dir+'predicted2.png')
+    
     batch = batch.detach().cpu().numpy()
     b = batch[0,:,:,:]
-    b[b<np.std(b)]=np.nan
+    b[b<3*np.std(b)]=np.nan
     mom0 = np.nansum(b,axis=0)
     channels = np.arange(-600,600,10)
     num = np.nansum(np.transpose(b,(1,2,0))*channels,axis=2)
