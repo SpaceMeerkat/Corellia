@@ -54,7 +54,8 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         index = np.arange(0,batch_size,1)
         results = list(pool.imap(return_cube,index))
         batch = np.array([r[0] for r in results])
-        targets = np.array([r[1:] for r in results]) # Note: not needed for CAE
+        mom0 = np.array([r[-1] for r in results])
+        targets = np.array([r[1:-1] for r in results]) # Note: not needed for CAE
                       
         batch = torch.tensor(batch)
         targets = torch.tensor(targets) 
@@ -78,8 +79,9 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         
         running_loss = []
         
-        for _ in tqdm(range(10000)):
-            prediction, rr_t = model(batch)  
+        for _ in tqdm(range(1000)):
+            prediction = model(batch)
+            prediction[batch[0,0,:,:]==0] = 0
             loss = loss_function(prediction, batch)
             prediction.retain_grad()
             optim.zero_grad(); loss.backward(); optim.step();
@@ -94,7 +96,7 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         #_________________________________________________________________________#
         
         if save_dir is not None:
-            plotter(rr_t, batch, prediction, save_directory)
+            plotter(prediction, batch, save_directory)
             
         #_________________________________________________________________________#
         #~~~ PRINT AVERAGE LAYER GRADIENTS   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -143,7 +145,7 @@ yy = yy.to(device).to(torch.float)
 
 cube = torch.zeros((120,64,64)).to(device).to(torch.float)
 
-model = CAE(4,xx,yy,cube) # Instantiate the model with 6 learnable parameters
+model = CAE(6,xx,yy,cube) # Instantiate the model with 6 learnable parameters
 
 ### Train the model
 training(model,batch_size=1,epochs=1,loss_function=torch.nn.MSELoss(),
