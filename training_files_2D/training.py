@@ -149,7 +149,7 @@ model = CAE(6,xx,yy,cube) # Instantiate the model with 6 learnable parameters
 
 ### Train the model
 training(model,batch_size=1,epochs=1,loss_function=torch.nn.MSELoss(),
-         initial_lr=1e-5,save_dir=save_directory,gradients=True)
+         initial_lr=1e-4,save_dir=save_directory,gradients=True)
 
 
 
