@@ -68,7 +68,7 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         
         batch = batch.to(device).to(torch.float)
         targets = targets.to(device).to(torch.float)
-               
+                      
         #_________________________________________________________________________#
         #~~~ TRAIN THE MODEL   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
         #_________________________________________________________________________#
@@ -78,7 +78,7 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         running_loss = []
         
         for _ in tqdm(range(100)):
-            prediction, vel = model(batch)  
+            prediction, vel, sbProf = model(batch) 
             loss = loss_function(prediction, batch)
             prediction.retain_grad()
             optim.zero_grad(); loss.backward(); optim.step();
@@ -87,15 +87,14 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         print("\n Mean loss: %.8f" % np.mean(running_loss),
                   "\n Loss std: %f" % np.std(running_loss))
         print('_'*73)
-        
-        print(torch.max(prediction), torch.max(batch))
+
         
         #_________________________________________________________________________#
         #~~~ CREATE ANY PLOTS   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
         #_________________________________________________________________________#
         
         if save_dir is not None:
-            plotter(vel, batch, prediction, save_directory)
+            plotter(batch, prediction, vel, sbProf, save_directory)
             
         #_________________________________________________________________________#
         #~~~ PRINT AVERAGE LAYER GRADIENTS   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -116,8 +115,17 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         #_________________________________________________________________________#
         
         if (save_dir is not None) and (epoch == 39):
-            
             torch.save(model.state_dict(),save_dir+'CAE_pilot.pt')  
+            
+        #_________________________________________________________________________#
+        #~~~ SMAKE ENCODINGS FOR DEBUGGING   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
+        #_________________________________________________________________________#
+            
+        if epoch == 0 :
+            print('TARGETS: ', targets)
+            model.train(False)
+            encodings = model.test_encode(batch)
+            print('ENCODINGS: ',encodings)
         
         del batch; del targets;
         
@@ -135,11 +143,11 @@ yy = yy.to(device).to(torch.float)
 
 cube = torch.zeros((120,64,64)).to(device).to(torch.float)
 
-model = CAE(6,xx,yy,cube) # Instantiate the model with 6 learnable parameters
+model = CAE(6,xx,yy,cube,dv=10) # Instantiate the model with 6 learnable parameters
 
 ### Train the model
 training(model,batch_size=1,epochs=1,loss_function=torch.nn.MSELoss(),
-         initial_lr=1e-4,save_dir=save_directory)
+         initial_lr=1e-5,save_dir=save_directory,gradients=True)
 
 
 

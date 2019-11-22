@@ -54,8 +54,7 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         index = np.arange(0,batch_size,1)
         results = list(pool.imap(return_cube,index))
         batch = np.array([r[0] for r in results])
-        mom0 = np.array([r[-1] for r in results])
-        targets = np.array([r[1:-1] for r in results]) # Note: not needed for CAE
+        targets = np.array([r[1:] for r in results]) # Note: not needed for CAE
                       
         batch = torch.tensor(batch)
         targets = torch.tensor(targets) 
@@ -149,7 +148,7 @@ model = CAE(6,xx,yy,cube) # Instantiate the model with 6 learnable parameters
 
 ### Train the model
 training(model,batch_size=1,epochs=1,loss_function=torch.nn.MSELoss(),
-         initial_lr=1e-4,save_dir=save_directory,gradients=True)
+         initial_lr=1e-5,save_dir=save_directory,gradients=True)
 
 
 

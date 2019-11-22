@@ -40,8 +40,8 @@ def return_cube(i):
         
     pos_ang = random.uniform(0,360)
     inc_ang = random.uniform(5,90)
-    scale_frac = random.uniform(0.1,0.4)
-    ah = random.uniform(0.1,1)
+    scale_frac = random.uniform(0.1,0.5)
+    ah = random.uniform(0.01,0.1)
     Vh = random.uniform(100,500)
     cube = cube_generator(scale_length_frac=scale_frac,pos_ang=pos_ang,
                           inc_ang=inc_ang,resolution=1000,ah=ah,Vh=Vh).cube_creation()
@@ -56,7 +56,7 @@ def return_cube(i):
 
     pos_ang = np.deg2rad(pos_ang)
         
-    return cube,np.cos(pos_ang),np.sin(pos_ang),inc_ang,scale_frac,ah,Vh, mom0
+    return cube,np.cos(pos_ang),np.sin(pos_ang),inc_ang,scale_frac,ah,Vh
 
 #_____________________________________________________________________________#
 #_____________________________________________________________________________#
@@ -107,7 +107,7 @@ def plotter(v, batch, out_dir):
     
     plt.tight_layout()
     
-    plt.savefig(out_dir+'Examples.png')
+    plt.savefig(out_dir+'Examples3.png')
     
     return
 

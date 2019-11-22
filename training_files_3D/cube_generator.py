@@ -32,7 +32,7 @@ class cube_generator:
             self.resolution = resolution
             self.ah = ah
             self.Vh = Vh
-            self.extent = 64
+            self.extent = 32
             self.xsize=64
             self.ysize=64
             self.vsize=1200
@@ -51,7 +51,8 @@ class cube_generator:
     
     def velocity_profile(self,radii):
         """ CREATE A VELOCITY PROFILE THAT SCALES WITH GALACTIC RADIUS """
-        
+       
+        self.ah = self.extent * self.ah
         vel = np.sqrt((self.Vh**2)*(1-((self.ah/radii[1:])*np.arctan(radii[1:]/self.ah))))
         vel = np.insert(vel,0,1)
         return vel

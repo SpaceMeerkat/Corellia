@@ -38,10 +38,9 @@ def return_cube(i):
         INCLINATIONS """
         
     pos_ang = random.uniform(0,360)
-    pos_ang = 0
     inc_ang = random.uniform(5,90)
-    scale_frac = random.uniform(0.1,0.4)
-    ah = random.uniform(0.1,1)
+    scale_frac = random.uniform(0.1,0.5)
+    ah = random.uniform(0.01,0.1)
     Vh = random.uniform(100,500)
     cube = cube_generator(scale_length_frac=scale_frac,pos_ang=pos_ang,
                           inc_ang=inc_ang,resolution=1000,ah=ah,Vh=Vh).cube_creation()
@@ -78,27 +77,9 @@ def recover_pos(theta1,theta2):
 #_____________________________________________________________________________#
     
 
-def plotter(vel, batch, batch2, out_dir):
+def plotter(batch, prediction, vel, sbProf, out_dir):
     
     """ PLOTTING THE PREDICTED AND TRUE VELOCITY FIELDS """
-    
-    vel = vel.detach().cpu().numpy()
-    plt.figure()
-    plt.imshow(vel)
-    plt.colorbar()
-    plt.savefig(out_dir+'predicted.png')
-    
-    batch2 = batch2.detach().cpu().numpy()
-    b = batch2[0,:,:,:]
-    b[b<3*np.std(b)]=np.nan
-    mom0 = np.nansum(b,axis=0)
-    channels = np.arange(-600,600,10)
-    num = np.nansum(np.transpose(b,(1,2,0))*channels,axis=2)
-    mom1 = num/mom0
-    plt.figure()
-    plt.imshow(mom1)
-    plt.colorbar()
-    plt.savefig(out_dir+'predicted2.png')
     
     batch = batch.detach().cpu().numpy()
     b = batch[0,:,:,:]
@@ -111,6 +92,30 @@ def plotter(vel, batch, batch2, out_dir):
     plt.imshow(mom1)
     plt.colorbar()
     plt.savefig(out_dir+'true.png')
+    
+    prediction = prediction.detach().cpu().numpy()
+    b = prediction[0,:,:,:]
+#    b[b<0.01*np.std(b)]=np.nan
+    mom0 = np.nansum(b,axis=0)
+    channels = np.arange(-600,600,10)
+    num = np.nansum(np.transpose(b,(1,2,0))*channels,axis=2)
+    mom1 = num/mom0
+    plt.figure()
+    plt.imshow(mom1)
+    plt.colorbar()
+    plt.savefig(out_dir+'predicted.png')
+    
+    vel = vel.detach().cpu().numpy()
+    plt.figure()
+    plt.imshow(vel)
+    plt.colorbar()
+    plt.savefig(out_dir+'vel.png')
+    
+    sbProf = sbProf.detach().cpu().numpy()
+    plt.figure()
+    plt.imshow(sbProf)
+    plt.colorbar()
+    plt.savefig(out_dir+'sbProf.png')
     
     return
 

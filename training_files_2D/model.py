@@ -98,9 +98,9 @@ class CAE(torch.nn.Module):
         ### Define the variables needed for cube modelling from input x
         pos = self.pos_ang(x[:,0].clone(),x[:,1].clone()) ### Poition angle
         inc = self.de_regularise(x[:,2].clone(),5,pi/2.) ### Inclination
-        a = self.de_regularise(x[:,3].clone(),0.1,0.4) ### SBprof scale length
+        a = self.de_regularise(x[:,3].clone(),0.1,0.5) ### SBprof scale length
         a = a * shape / 2
-        ah = self.de_regularise(x[:,4].clone(),0.1,1) ### DM halo scale length
+        ah = self.de_regularise(x[:,4].clone(),0.01,0.1) ### DM halo scale length
         ah = ah * shape / 2
         Vh = self.de_regularise(x[:,5].clone(),50,500) ### Maximum velocity allowed
                 
@@ -108,19 +108,17 @@ class CAE(torch.nn.Module):
         xx_t = -self.xx*torch.sin(pos) + self.yy*torch.cos(pos)
         yy_t = self.xx*torch.cos(pos) + self.yy*torch.sin(pos)
         yy_t = yy_t / torch.sin(pi/2-inc)
-
         rr_t = torch.sqrt((xx_t**2) + (yy_t**2))
         
         vel = self.velocity_profile(rr_t, Vh, ah) 
         vel = vel * torch.cos(torch.atan2(yy_t, xx_t)) * torch.sin(inc) ### Convert to LOS velocities
-        vel = torch.clamp(vel,-600,600)
+        vel[vel<-600] = 0
+        vel[vel>600] = 0
         vel = self.regularise(vel)
                 
         ### Create 2D array of SBprof given some 2D radius array
         sbProf = self.surface_brightness_profile(rr_t, a)
         sbProf = self.regularise(sbProf)
-        
-#        rr_t = rr_t/torch.max(rr_t)
                
         return vel
     
