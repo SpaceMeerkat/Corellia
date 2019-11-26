@@ -96,7 +96,7 @@ class CAE(torch.nn.Module):
         array = (array*2) - 1
         return array
     
-    def cube_maker(self, x):
+    def cube_maker(self, x, original):
         """ GENERATE THE OUTPUT CUBE USING PYTORCH FUNCTIONS """ 
         
         ### Define the variables needed for cube modelling from input x
@@ -128,16 +128,18 @@ class CAE(torch.nn.Module):
         v = vel.clone() # clone the index array for visualising in trainging script
         vel = vel//self.dv # Get channel indices of each pixel
         vel += int(self.width/2.) # Redistribute channel values to lie in range 0-N
-        
       
         cube = self.cube.clone()
+        ### Choose between mapping and looping (so far can't see a difference other than speed)
+        ### MAPPING
         cube[torch.unique(vel).type(torch.LongTensor),:,:] = torch.stack([*map(vel.__eq__,torch.unique(vel))]).type(torch.float)*sbProf.type(torch.float) ### Fill cube
+        ### LOOPING
 #        for i in range(self.shape): # Populate channels with sbProf
 #            for j in range(self.shape):
 #                v_ind = vel[i,j].to(torch.int)
 #                cube[v_ind,i,j] = sbProf[i,j] 
         cube = cube.unsqueeze(0) # Resize cube
-#        cube = cube/torch.max(cube)
+        cube[original==0] = 0 # Mask the output by where the input=0
 
         return cube, v, sbProf
     
@@ -151,7 +153,7 @@ class CAE(torch.nn.Module):
         """ CREATE A FORWARD PASS THROUGH THE REQUIRED MODEL FUNCTIONS """
         output = self.encoder_conv(x)
         output = self.encoder_linear(output)
-        output, vel, sbProf = self.cube_maker(output)
+        output, vel, sbProf = self.cube_maker(output, x)
         return output, vel, sbProf
        
 #=============================================================================#

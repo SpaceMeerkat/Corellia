@@ -81,9 +81,21 @@ def plotter(batch, prediction, vel, sbProf, out_dir):
     
     """ PLOTTING THE PREDICTED AND TRUE VELOCITY FIELDS """
     
+    prediction = prediction.detach().cpu().numpy()
+    b = prediction[0,:,:,:]
+#    b[b<0.01*np.std(b)]=np.nan
+    mom0 = np.sum(b,axis=0)
+    channels = np.arange(-600,600,10)
+    num = np.sum(np.transpose(b,(1,2,0))*channels,axis=2)
+    mom1 = num/mom0
+    plt.figure()
+    plt.imshow(mom1)
+    plt.colorbar()
+    plt.savefig(out_dir+'predicted.png')
+    
     batch = batch.detach().cpu().numpy()
     b = batch[0,:,:,:]
-    b[b<3*np.std(b)]=np.nan
+    b[b<2*np.std(b)]=np.nan
     mom0 = np.nansum(b,axis=0)
     channels = np.arange(-600,600,10)
     num = np.nansum(np.transpose(b,(1,2,0))*channels,axis=2)
@@ -92,18 +104,6 @@ def plotter(batch, prediction, vel, sbProf, out_dir):
     plt.imshow(mom1)
     plt.colorbar()
     plt.savefig(out_dir+'true.png')
-    
-    prediction = prediction.detach().cpu().numpy()
-    b = prediction[0,:,:,:]
-#    b[b<0.01*np.std(b)]=np.nan
-    mom0 = np.nansum(b,axis=0)
-    channels = np.arange(-600,600,10)
-    num = np.nansum(np.transpose(b,(1,2,0))*channels,axis=2)
-    mom1 = num/mom0
-    plt.figure()
-    plt.imshow(mom1)
-    plt.colorbar()
-    plt.savefig(out_dir+'predicted.png')
     
     vel = vel.detach().cpu().numpy()
     plt.figure()

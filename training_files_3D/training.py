@@ -54,6 +54,7 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         index = np.arange(0,batch_size,1)
         results = list(pool.imap(return_cube,index))
         batch = np.array([r[0] for r in results])
+        batch[batch!=batch] = 0
         targets = np.array([r[1:] for r in results]) # Note: not needed for CAE
                       
         batch = torch.tensor(batch)
@@ -77,7 +78,7 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         
         running_loss = []
         
-        for _ in tqdm(range(100)):
+        for _ in tqdm(range(1000)):
             prediction, vel, sbProf = model(batch) 
             loss = loss_function(prediction, batch)
             prediction.retain_grad()
