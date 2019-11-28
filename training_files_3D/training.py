@@ -122,7 +122,7 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         #~~~ SMAKE ENCODINGS FOR DEBUGGING   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
         #_________________________________________________________________________#
             
-        if epoch == 0 :
+        if epoch == 10 :
             print('TARGETS: ', targets)
             model.train(False)
             encodings = model.test_encode(batch)
@@ -133,25 +133,22 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
 #_____________________________________________________________________________#
 #_____________________________________________________________________________#
         
-        
+batch_size = 16
+
 ### RUN THE TRAINING PROCEDURE HERE AND PROVIDE THE NETWORK WITH THE REQUIRED
 ### AUXILIARY 2D X AND Y ARRAYS        
 
 ### Create the auxiliary arrays
 yy, xx = torch.meshgrid(torch.arange(0 - 63/2., (63/2.)+1), torch.arange(0 - 63/2., (63/2.)+1))
+
+xx, yy = xx.repeat(batch_size,1,1), yy.repeat(batch_size,1,1)
 xx = xx.to(device).to(torch.float)
 yy = yy.to(device).to(torch.float)
 
-cube = torch.zeros((120,64,64)).to(device).to(torch.float)
+cube = torch.zeros((16,120,64,64)).to(device).to(torch.float)
 
 model = CAE(6,xx,yy,cube,dv=10) # Instantiate the model with 6 learnable parameters
 
 ### Train the model
-training(model,batch_size=1,epochs=1,loss_function=torch.nn.MSELoss(),
-         initial_lr=1e-5,save_dir=save_directory,gradients=True)
-
-
-
-
-
-
+training(model,batch_size=batch_size,epochs=5,loss_function=torch.nn.MSELoss(),
+         initial_lr=1e-5,save_dir=save_directory,gradients=False)

@@ -84,36 +84,38 @@ def plotter(batch, prediction, vel, sbProf, out_dir):
     prediction = prediction.detach().cpu().numpy()
     b = prediction[0,:,:,:]
 #    b[b<0.01*np.std(b)]=np.nan
-    mom0 = np.sum(b,axis=0)
+    mom0 = np.sum(b,axis=0) + 1e-10
     channels = np.arange(-600,600,10)
-    num = np.sum(np.transpose(b,(1,2,0))*channels,axis=2)
+    num = np.sum(b*channels[:,None,None],axis=0)
     mom1 = num/mom0
+    mom1[mom1!=mom1] = 0
     plt.figure()
     plt.imshow(mom1)
     plt.colorbar()
     plt.savefig(out_dir+'predicted.png')
-    
+       
     batch = batch.detach().cpu().numpy()
     b = batch[0,:,:,:]
-    b[b<2*np.std(b)]=np.nan
-    mom0 = np.nansum(b,axis=0)
+    b[b<2*np.std(b)]=0
+    mom0 = np.sum(b,axis=0) + 1e-10
     channels = np.arange(-600,600,10)
-    num = np.nansum(np.transpose(b,(1,2,0))*channels,axis=2)
+    num = np.sum(np.transpose(b,(1,2,0))*channels,axis=2)
     mom1 = num/mom0
+    mom1[mom1!=mom1] = 0
     plt.figure()
     plt.imshow(mom1)
     plt.colorbar()
     plt.savefig(out_dir+'true.png')
     
-    vel = vel.detach().cpu().numpy()
+    vel = vel[0,:,:].detach().cpu().numpy()
     plt.figure()
     plt.imshow(vel)
     plt.colorbar()
     plt.savefig(out_dir+'vel.png')
     
-    sbProf = sbProf.detach().cpu().numpy()
+    sbProf = sbProf[0,:,:].detach().cpu().numpy()
     plt.figure()
-    plt.imshow(sbProf)
+    plt.imshow(np.log(sbProf+(1e-10)))
     plt.colorbar()
     plt.savefig(out_dir+'sbProf.png')
     
