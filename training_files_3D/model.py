@@ -137,11 +137,12 @@ class CAE(torch.nn.Module):
         for k in range(cube.shape[0]):cube[k,torch.unique(vel[k]).type(torch.LongTensor),:,:] = torch.stack([*map(vel[k].__eq__,torch.unique(vel[k]))]).type(torch.float)*sbProf[k].type(torch.float) ### Fill cube
                 
         ### LOOPING
-#        for i in range(self.shape): # Populate channels with sbProf
-#            for j in range(self.shape):
-#                v_ind = vel[i,j].to(torch.int)
-#                cube[v_ind,i,j] = sbProf[i,j] 
-        #cube[original==0] = 0 # Mask the output by where the input=0
+#        for k in range(cube.shape[0]):
+#            for i in range(self.shape): # Populate channels with sbProf
+#                for j in range(self.shape):
+#                    v_ind = vel[k,i,j].to(torch.int)
+#                    cube[k,v_ind,i,j] = sbProf[k,i,j] 
+        cube[original==0] = 0 # Mask the output by where the input=0
 
 
         return cube, v, sbProf

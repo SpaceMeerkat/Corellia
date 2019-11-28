@@ -78,7 +78,7 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         
         running_loss = []
         
-        for _ in tqdm(range(1000)):
+        for _ in tqdm(range(1)):
             prediction, vel, sbProf = model(batch) 
             loss = loss_function(prediction, batch)
             prediction.retain_grad()
@@ -150,5 +150,5 @@ cube = torch.zeros((16,120,64,64)).to(device).to(torch.float)
 model = CAE(6,xx,yy,cube,dv=10) # Instantiate the model with 6 learnable parameters
 
 ### Train the model
-training(model,batch_size=batch_size,epochs=5,loss_function=torch.nn.MSELoss(),
+training(model,batch_size=batch_size,epochs=10,loss_function=torch.nn.MSELoss(),
          initial_lr=1e-5,save_dir=save_directory,gradients=False)
