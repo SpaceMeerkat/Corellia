@@ -46,9 +46,9 @@ def return_cube(i):
     cube = cube_generator(scale_length_frac=scale_frac,pos_ang=pos_ang,
                           inc_ang=inc_ang,resolution=1000,ah=ah,Vh=Vh).cube_creation()
     
-    cube[cube<=0.1*np.std(cube)]=np.nan
-    mom0 = np.nansum(cube,axis=2)
-    cube = np.nansum(np.arange(-600,600,10)*cube,axis=2) / mom0
+    cube[cube<=3*np.std(cube)]=np.nan
+    mom0 = np.nansum(cube,axis=2) 
+    cube = np.nansum(cube*np.arange(-600,600,10)[None,None,:],axis=2) / mom0
     cube -= np.nanmin(cube) 
     cube /= np.nanmax(cube)
     cube *= 2
@@ -89,25 +89,26 @@ def plotter(v, batch, out_dir):
     
     """ PLOTTING THE PREDICTED AND TRUE VELOCITY FIELDS """
     
-    plt.figure()
-    
     v = v.detach().cpu().numpy()
-    b = v
-    plt.subplot(121)
-    plt.imshow(b,cmap=sauron)
-    plt.colorbar(fraction=0.046, pad=0.04)
-    plt.title('PREDICTED')
-    
     batch = batch.detach().cpu().numpy()
-    b = batch[0,0,:,:]
-    plt.subplot(122)
-    plt.imshow(b,cmap=sauron)
-    plt.colorbar(fraction=0.046, pad=0.04)
-    plt.title('TRUE')
     
-    plt.tight_layout()
+    for i in range(v.shape[0]):
+        plt.figure()
+        b = v[i,0,:,:]
+        plt.subplot(121)
+        plt.imshow(b,cmap=sauron)
+        plt.colorbar(fraction=0.046, pad=0.04)
+        plt.title('PREDICTED')
     
-    plt.savefig(out_dir+'Examples3.png')
+        b = batch[i,0,:,:]
+        plt.subplot(122)
+        plt.imshow(b,cmap=sauron)
+        plt.colorbar(fraction=0.046, pad=0.04)
+        plt.title('TRUE')
+        
+        plt.tight_layout()
+        
+        plt.savefig(out_dir+'Examples'+str(i)+'.png')
     
     return
 

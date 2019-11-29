@@ -86,23 +86,23 @@ class CAE(torch.nn.Module):
         return tensor
     
     def regularise(self,array):
-        array = array / torch.max(array)
-        array = array - torch.min(array)
-        array = array / torch.max(array)
+        array = array / array.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
+        array = array - array.min(1)[0].min(1)[0].min(1)[0][:,None,None,None]
+        array = array / array.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
         array = (array*2) - 1
         return array
     
-    def cube_maker(self, x, vlim, shape, dv, v_size):
+    def cube_maker(self, x, original, vlim, shape, dv, v_size):
         """ GENERATE THE OUTPUT CUBE USING PYTORCH FUNCTIONS """ 
         
         ### Define the variables needed for cube modelling from input x
-        pos = self.pos_ang(x[:,0].clone(),x[:,1].clone()) ### Poition angle
-        inc = self.de_regularise(x[:,2].clone(),5,pi/2.) ### Inclination
-        a = self.de_regularise(x[:,3].clone(),0.1,0.5) ### SBprof scale length
+        pos = self.pos_ang(x[:,0].clone(),x[:,1].clone())[:,None,None] ### Poition angle
+        inc = self.de_regularise(x[:,2].clone(),5,pi/2.)[:,None,None] ### Inclination
+        a = self.de_regularise(x[:,3].clone(),0.1,0.5)[:,None,None] ### SBprof scale length
         a = a * shape / 2
-        ah = self.de_regularise(x[:,4].clone(),0.01,0.1) ### DM halo scale length
+        ah = self.de_regularise(x[:,4].clone(),0.01,0.1)[:,None,None] ### DM halo scale length
         ah = ah * shape / 2
-        Vh = self.de_regularise(x[:,5].clone(),50,500) ### Maximum velocity allowed
+        Vh = self.de_regularise(x[:,5].clone(),50,500)[:,None,None] ### Maximum velocity allowed
                 
         ### Create 2D arrays of x,y, and r values
         xx_t = -self.xx*torch.sin(pos) + self.yy*torch.cos(pos)
@@ -113,12 +113,14 @@ class CAE(torch.nn.Module):
         vel = self.velocity_profile(rr_t, Vh, ah) 
         vel = vel * torch.cos(torch.atan2(yy_t, xx_t)) * torch.sin(inc) ### Convert to LOS velocities
         vel[vel<-600] = 0
-        vel[vel>600] = 0
+        vel[vel>600] = 0        
+        vel = vel.unsqueeze(1)
         vel = self.regularise(vel)
-                
+        vel[original==0] = 0
+                        
         ### Create 2D array of SBprof given some 2D radius array
-        sbProf = self.surface_brightness_profile(rr_t, a)
-        sbProf = self.regularise(sbProf)
+#        sbProf = self.surface_brightness_profile(rr_t, a)
+#        sbProf = self.regularise(sbProf)
                
         return vel
     
@@ -132,7 +134,7 @@ class CAE(torch.nn.Module):
         """ CREATE A FORWARD PASS THROUGH THE REQUIRED MODEL FUNCTIONS """
         output = self.encoder_conv(x)
         output = self.encoder_linear(output)
-        output = self.cube_maker(output,vlim=1,shape=64,dv=10,v_size=120)
+        output = self.cube_maker(output,x,vlim=1,shape=64,dv=10,v_size=120)
         return output
     
 #=============================================================================#

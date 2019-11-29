@@ -25,13 +25,13 @@ device = torch.device("cuda")
 
 torch.cuda.empty_cache()
 
-save_directory = '/home/corona/c1307135/Semantic_ML/Corellia/images/'
+save_directory = '/home/corona/c1307135/Semantic_ML/Corellia/images/2D/'
 
 #_____________________________________________________________________________#
 #_____________________________________________________________________________#
     
 def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
-             save_dir=None,gradients=False):
+             save_dir=None,gradients=False,testing=False):
     
     #_________________________________________________________________________#
     #~~~ SET UP THE MODEL   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -60,7 +60,7 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         targets = torch.tensor(targets) 
         
         # Resize for B,C,H,W format
-        batch = batch.unsqueeze(0)
+        batch = batch.unsqueeze(1)
         batch[batch!=batch]=0
         #batch = batch.permute(0,3,1,2) # reshape the tensor to (B,C,H,W)
         targets = targets.squeeze(1).squeeze(-1)
@@ -80,7 +80,6 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         
         for _ in tqdm(range(1000)):
             prediction = model(batch)
-            prediction[batch[0,0,:,:]==0] = 0
             loss = loss_function(prediction, batch)
             prediction.retain_grad()
             optim.zero_grad(); loss.backward(); optim.step();
@@ -122,7 +121,7 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         #~~~ SMAKE ENCODINGS FOR DEBUGGING   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
         #_________________________________________________________________________#
             
-        if epoch == 0 :
+        if (epoch == 0) and (testing == True):
             print('TARGETS: ', targets)
             model.train(False)
             encodings = model.test_encode(batch)
@@ -134,21 +133,25 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
 #_____________________________________________________________________________#
         
         
+batch_size = 16
+
 ### RUN THE TRAINING PROCEDURE HERE AND PROVIDE THE NETWORK WITH THE REQUIRED
 ### AUXILIARY 2D X AND Y ARRAYS        
 
 ### Create the auxiliary arrays
 yy, xx = torch.meshgrid(torch.arange(0 - 63/2., (63/2.)+1), torch.arange(0 - 63/2., (63/2.)+1))
+
+xx, yy = xx.repeat(batch_size,1,1), yy.repeat(batch_size,1,1)
 xx = xx.to(device).to(torch.float)
 yy = yy.to(device).to(torch.float)
 
-cube = torch.zeros((120,64,64)).to(device).to(torch.float)
+cube = torch.zeros((batch_size,1,64,64)).to(device).to(torch.float)
 
 model = CAE(6,xx,yy,cube) # Instantiate the model with 6 learnable parameters
 
 ### Train the model
-training(model,batch_size=1,epochs=1,loss_function=torch.nn.MSELoss(),
-         initial_lr=1e-5,save_dir=save_directory,gradients=True)
+training(model,batch_size=batch_size,epochs=1,loss_function=torch.nn.MSELoss(),
+         initial_lr=1e-5,save_dir=save_directory,gradients=False)
 
 
 
