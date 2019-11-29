@@ -117,11 +117,7 @@ class CAE(torch.nn.Module):
         vel = vel.unsqueeze(1)
         vel = self.regularise(vel)
         vel[original==0] = 0
-                        
-        ### Create 2D array of SBprof given some 2D radius array
-#        sbProf = self.surface_brightness_profile(rr_t, a)
-#        sbProf = self.regularise(sbProf)
-               
+                                      
         return vel
     
     def test_encode(self,x):

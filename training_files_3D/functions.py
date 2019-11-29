@@ -46,6 +46,7 @@ def return_cube(i):
                           inc_ang=inc_ang,resolution=1000,ah=ah,Vh=Vh).cube_creation()
        
     cube/=cube.max()
+    cube[cube<2*np.std(cube)]=0
     pos_ang = np.deg2rad(pos_ang)
         
     return cube,np.cos(pos_ang),np.sin(pos_ang),inc_ang,scale_frac,Vh
@@ -84,12 +85,11 @@ def plotter(batch, prediction, vel, sbProf, out_dir):
     prediction = prediction.detach().cpu().numpy()
     for i in range(prediction.shape[0]):
         b = prediction[i,:,:,:]
-    #    b[b<0.01*np.std(b)]=np.nan
         mom0 = np.sum(b,axis=0) + 1e-10
         channels = np.arange(-600,600,10)
         num = np.sum(b*channels[:,None,None],axis=0)
         mom1 = num/mom0
-        mom1[mom1!=mom1] = 0
+
         plt.figure()
         plt.imshow(mom1)
         plt.colorbar()
@@ -99,29 +99,27 @@ def plotter(batch, prediction, vel, sbProf, out_dir):
     batch = batch.detach().cpu().numpy()
     for i in range(prediction.shape[0]):
         b = batch[i,:,:,:]
-        b[b<2*np.std(b)]=0
         mom0 = np.sum(b,axis=0) + 1e-10
         channels = np.arange(-600,600,10)
         num = np.sum(np.transpose(b,(1,2,0))*channels,axis=2)
         mom1 = num/mom0
-        mom1[mom1!=mom1] = 0
         plt.figure()
         plt.imshow(mom1)
         plt.colorbar()
         plt.savefig(out_dir+'3D/True'+str(i)+'.png')
     plt.close('all')
     
-    vel = vel[0,:,:].detach().cpu().numpy()
-    plt.figure()
-    plt.imshow(vel)
-    plt.colorbar()
-    plt.savefig(out_dir+'vel.png')
-    
-    sbProf = sbProf[0,:,:].detach().cpu().numpy()
-    plt.figure()
-    plt.imshow(np.log(sbProf+(1e-10)))
-    plt.colorbar()
-    plt.savefig(out_dir+'sbProf.png')
+#    vel = vel[0,:,:].detach().cpu().numpy()
+#    plt.figure()
+#    plt.imshow(vel)
+#    plt.colorbar()
+#    plt.savefig(out_dir+'vel.png')
+#    
+#    sbProf = sbProf[0,:,:].detach().cpu().numpy()
+#    plt.figure()
+#    plt.imshow(np.log(sbProf+(1e-10)))
+#    plt.colorbar()
+#    plt.savefig(out_dir+'sbProf.png')
     
     return
 
