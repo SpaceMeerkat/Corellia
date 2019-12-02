@@ -91,9 +91,9 @@ class CAE(torch.nn.Module):
         return tensor
     
     def regularise(self,array):
-        array = array / torch.max(array)
-        array = array - torch.min(array)
-        array = array / torch.max(array)
+        array = array / array.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
+        array = array - array.min(1)[0].min(1)[0].min(1)[0][:,None,None,None]
+        array = array / array.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
         array = (array*2) - 1
         return array
     
@@ -108,6 +108,7 @@ class CAE(torch.nn.Module):
         ah = self.de_regularise(x[:,4].clone(),0.01,0.1)[:,None,None] ### DM halo scale length
         ah = ah * self.shape / 2
         Vh = self.de_regularise(x[:,5].clone(),50,500)[:,None,None] ### Maximum velocity allowed
+        cube = self.cube.clone()
                        
         ### Create 2D arrays of x,y, and r values
         xx_t = -self.xx*torch.sin(pos) + self.yy*torch.cos(pos)
@@ -126,15 +127,16 @@ class CAE(torch.nn.Module):
         vel = vel * torch.cos(torch.atan2(yy_t, xx_t)) * torch.sin(inc) ### Convert to line-of-sight velocities
         vel[vel<-self.vlim] = 0 # Clip velocities out of range
         vel[vel>self.vlim] = 0 # Clip velocities out of range
+    
 
         vel = vel//self.dv # Get channel indices of each pixel
         v = vel.clone() # clone the index array for visualising in trainging script
         vel += int(self.width/2.) # Redistribute channel values to lie in range 0-N
       
-        cube = self.cube.clone()
         ### Choose between mapping and looping (so far can't see a difference other than speed)
         ### MAPPING
-        for k in range(cube.shape[0]):cube[k,torch.unique(vel[k]).type(torch.LongTensor),:,:] = torch.stack([*map(vel[k].__eq__,torch.unique(vel[k]))]).type(torch.float)*sbProf[k].type(torch.float) ### Fill cube
+        for k in range(cube.shape[0]):cube[k,torch.unique(vel[k]).type(torch.LongTensor),:,:] = \
+        torch.stack([*map(vel[k].__eq__,torch.unique(vel[k]))]).type(torch.float)*sbProf[k].type(torch.float) ### Fill cube
                 
         ### LOOPING
 #        for k in range(cube.shape[0]):
