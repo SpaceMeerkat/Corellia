@@ -13,8 +13,8 @@ Created on Thu Oct 10 10:20:55 2019
 import numpy as np
 from KinMS import KinMS
 
-import matplotlib
-matplotlib.use('Agg')
+#import matplotlib
+#matplotlib.use('Agg')
 
 #=============================================================================#
 #~~~   START OF CLASS   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#

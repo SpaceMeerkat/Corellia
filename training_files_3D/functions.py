@@ -8,13 +8,14 @@ Created on Thu Oct 10 15:59:24 2019
 
 #_____________________________________________________________________________#
 #_____________________________________________________________________________#
-import matplotlib
-matplotlib.use('Agg')
+#import matplotlib
+#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import random
 import torch
 
+from sauron_colormap import sauron
 from cube_generator import cube_generator
 
 #_____________________________________________________________________________#
@@ -46,10 +47,10 @@ def return_cube(i):
                           inc_ang=inc_ang,resolution=1000,ah=ah,Vh=Vh).cube_creation()
        
     cube/=cube.max()
-    cube[cube<2*np.std(cube)]=0
+    cube[cube<np.std(cube)]=0
     pos_ang = np.deg2rad(pos_ang)
         
-    return cube,np.cos(pos_ang),np.sin(pos_ang),inc_ang,scale_frac,Vh
+    return cube,np.cos(pos_ang),np.sin(pos_ang),inc_ang,scale_frac,ah,Vh
 
 #_____________________________________________________________________________#
 #_____________________________________________________________________________#
@@ -124,9 +125,40 @@ def plotter(batch, prediction, vel, sbProf, out_dir):
     return
 
 
+def moment_one(cube):
+        plt.close('all')
+        mom0 = np.sum(cube,axis=2) + 1e-10
+        channels = np.arange(-600,600,10)
+        num = np.sum(cube*channels[None,None,:],axis=2)
+        mom1 = num/mom0
+        mom1+= np.random.uniform(0,0.01*np.std(mom1),(64,64))
+        
+        plt.figure()
+        plt.imshow(mom1,cmap=sauron)
+        plt.colorbar()
+        plt.show()
+        
+        return mom1
+    
+def moment_two(cube):
+        #plt.close('all')
+        mom0 = np.sum(cube,axis=2) + 1e-10
+        channels = np.arange(-600,600,10)
+        num = np.sum(cube*channels[None,None,:],axis=2)
+        mom1 = num/mom0
+        
+        vel_narray = np.ones((cube.shape))
+        vel_narray *= channels[None,None,:]
+                       
+        mom2 = np.sqrt(np.sum(abs(cube) * (vel_narray - mom1[:,:,None])**2., axis=2) / (np.sum(abs(cube), axis=2)+1e-10))
 
-
-
+        fig, axes = plt.subplots(nrows=1, ncols=2)
+        im1 = axes[0].imshow(mom1,cmap=sauron)
+        plt.colorbar(im1, ax=axes[0],fraction=0.046, pad=0.04)
+        im2 = axes[1].imshow(mom2,cmap=sauron)
+        plt.colorbar(im2, ax=axes[1],fraction=0.046, pad=0.04)
+        plt.tight_layout()
+        return mom1
 
 
 
