@@ -146,7 +146,6 @@ class CAE(torch.nn.Module):
 #                    cube[k,v_ind,i,j] = sbProf[k,i,j] 
         cube[original==0] = 0 # Mask the output by where the input=0
 
-
         return cube, v, sbProf
     
     def test_encode(self,x):
