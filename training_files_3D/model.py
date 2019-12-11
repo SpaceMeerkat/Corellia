@@ -141,7 +141,7 @@ class CAE(torch.nn.Module):
 #        torch.stack([*map(vel[k].__eq__,torch.unique(vel[k]))]).type(torch.float)*sbProf[k].type(torch.float) ### Fill cube
         
         ### ANOTHER WAY THAT DOESN'T REQUIRE *MAP FUNCTIONALITY
-        for k in range(cube.shape[0]): cube[k,:,:,:].scatter(0,vel[:,k,:,:],sbProf[:,k,:,:])
+        for k in range(cube.shape[0]): cube[k,:,:,:].scatter_(0,vel[:,k,:,:],sbProf[:,k,:,:])
                 
         ### LOOPING
 #        for k in range(cube.shape[0]):
