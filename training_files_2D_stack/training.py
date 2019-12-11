@@ -15,7 +15,7 @@ import os
 from tqdm import tqdm
 import torch
 
-from functions import learning_rate, return_cube, plotter
+from functions import learning_rate, return_cube, plotter, regularise
 from model import CAE
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -56,6 +56,10 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         batch = np.array([r[0] for r in results])
         batch[batch!=batch] = 0
         targets = np.array([r[1:] for r in results]) # Note: not needed for CAE
+        
+        maxims = np.array([1,1,90,0.5,0.1,500,20])
+        minims = np.array([-1,-1,5,0.1,0.01,100,0])
+        targets = regularise(targets,maxims,minims)
                       
         batch = torch.tensor(batch)
         targets = torch.tensor(targets) 
@@ -63,7 +67,8 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         # Resize for B,C,H,W format
                
         batch = batch.permute(0,3,1,2) # reshape the tensor to (B,C,H,W)
-        targets = targets.squeeze(1).squeeze(-1)
+        batch = batch[:,1,:,:].unsqueeze(1)
+        targets = targets.unsqueeze(0).unsqueeze(0)
      
         # Cast inputs to GPU
         
@@ -78,9 +83,9 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         
         running_loss = []
         
-        for _ in tqdm(range(100)):
-            prediction, vel, sbProf = model(batch) 
-            loss = loss_function(prediction, batch)
+        for _ in tqdm(range(1000)):
+            prediction = model(batch) 
+            loss = loss_function(prediction, targets)
             prediction.retain_grad()
             optim.zero_grad(); loss.backward(); optim.step();
             running_loss.append(loss.detach().cpu())
@@ -95,7 +100,7 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         #_________________________________________________________________________#
         
         if save_dir is not None:
-            plotter(batch, prediction, vel, sbProf, save_directory)
+            plotter(targets, prediction, save_directory)
             
         #_________________________________________________________________________#
         #~~~ PRINT AVERAGE LAYER GRADIENTS   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -133,7 +138,7 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
 #_____________________________________________________________________________#
 #_____________________________________________________________________________#
         
-batch_size = 8
+batch_size = 16
 
 ### RUN THE TRAINING PROCEDURE HERE AND PROVIDE THE NETWORK WITH THE REQUIRED
 ### AUXILIARY 2D X AND Y ARRAYS        
@@ -145,9 +150,9 @@ xx, yy = xx.repeat(batch_size,1,1), yy.repeat(batch_size,1,1)
 xx = xx.to(device).to(torch.float)
 yy = yy.to(device).to(torch.float)
 
-cube = torch.zeros((batch_size,120,64,64),requires_grad=True).to(device).to(torch.float)
+cube = torch.zeros((batch_size,120,64,64)).to(device).to(torch.float)
 
-model = CAE(6,xx,yy,cube,dv=10) # Instantiate the model with 6 learnable parameters
+model = CAE(7,xx,yy,cube,dv=10) # Instantiate the model with 6 learnable parameters
 
 ### Train the model
 training(model,batch_size=batch_size,epochs=10,loss_function=torch.nn.MSELoss(),

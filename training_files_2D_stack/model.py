@@ -30,7 +30,7 @@ class CAE(torch.nn.Module):
         self.vlim = (cube.shape[1]*dv)/2        
 
         self.nodes = nodes
-        self.conv0 = torch.nn.Conv2d(120,16,3,1,padding=1)
+        self.conv0 = torch.nn.Conv2d(1,16,3,1,padding=1)
         self.conv1 = torch.nn.Conv2d(16,32,3,1,padding=1)
         self.conv2 = torch.nn.Conv2d(32,64,3,1,padding=1)
         self.conv3 = torch.nn.Conv2d(64,128,3,padding=1)
@@ -73,16 +73,6 @@ class CAE(torch.nn.Module):
         pos = torch.atan2(theta_1,theta_2) + pi
         return pos
     
-    def surface_brightness_profile(self, radius_tensor, scale_length):
-        """ GET THE SURFACE BRIGHTNESS FOR EACH PIXEL IN THE RADIUS ARRAY """
-        sbProf = torch.exp(-radius_tensor/scale_length)
-        return sbProf
-    
-    def velocity_profile(self, radius_tensor, Vh, ah):
-        """ GET THE LOS VELOCITIES FOR EACH PIXEL IN THE RADIUS ARRAY """
-        vel = torch.sqrt((Vh**2)*(1-((ah/radius_tensor)*torch.atan(radius_tensor/ah))))
-        return vel
-    
     def de_regularise(self,tensor,minimum,maximum):
         """ RECOVER THE PARAMETERS OUT OF THE NORMALISED RANGE [-1, 1] """
         tensor=tensor+1.
@@ -90,81 +80,37 @@ class CAE(torch.nn.Module):
         tensor=tensor+minimum
         return tensor
     
-    def regularise(self,array):
-        array = array / array.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
-        array = array - array.min(1)[0].min(1)[0].min(1)[0][:,None,None,None]
-        array = array / array.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
-        array = (array*2) - 1
-        return array
-    
-    def cube_maker(self, x, original):
+    def cube_maker(self, x, shape):
         """ GENERATE THE OUTPUT CUBE USING PYTORCH FUNCTIONS """ 
         
         ### Define the variables needed for cube modelling from input x
-        pos = self.pos_ang(x[:,0].clone(),x[:,1].clone())[:,None,None] ### Poition angle
+        pos_a = x[:,0].clone()[:,None,None] ### Poition angle
+        pos_b = x[:,1].clone()[:,None,None] ### Poition angle
         inc = self.de_regularise(x[:,2].clone(),5,pi/2.)[:,None,None] ### Inclination
         a = self.de_regularise(x[:,3].clone(),0.1,0.5)[:,None,None] ### SBprof scale length
-        a = a * self.shape / 2
+        a = a * shape / 2
         ah = self.de_regularise(x[:,4].clone(),0.01,0.1)[:,None,None] ### DM halo scale length
-        ah = ah * self.shape / 2
+        ah = ah * shape / 2
         Vh = self.de_regularise(x[:,5].clone(),50,500)[:,None,None] ### Maximum velocity allowed
-        cube = self.cube.clone()
-                       
-        ### Create 2D arrays of x,y, and r values
-        xx_t = -self.xx*torch.sin(pos) + self.yy*torch.cos(pos)
-        yy_t =  self.xx*torch.cos(pos) + self.yy*torch.sin(pos)
-        yy_t = yy_t / torch.sin((pi/2)-inc)
-        rr_t = torch.sqrt((xx_t**2) + (yy_t**2)) # Now a cube of radii as needed for batches
-        
-        ### Create 2D array of SBprof given some 2D radius array
-        sbProf = self.surface_brightness_profile(rr_t, a)
-        sbProf = sbProf-sbProf.min()
-        sbProf = sbProf / sbProf.max()
-        
-        ### Define the 2D V(r) given some 2D radius array
-        
-        vel = self.velocity_profile(rr_t, Vh, ah) # Get velocities V(r)
-        vel = vel * torch.cos(torch.atan2(yy_t, xx_t)) * torch.sin(inc) ### Convert to line-of-sight velocities
-        vel[vel<-self.vlim] = 0 # Clip velocities out of range
-        vel[vel>self.vlim] = 0 # Clip velocities out of range
-    
+        sigma = self.de_regularise(x[:,5].clone(),0,20)[:,None,None]
+        params = torch.stack([pos_a,pos_b,inc,a,ah,Vh,sigma]).T
 
-        vel = vel//self.dv # Get channel indices of each pixel
-        v = vel.clone() # clone the index array for visualising in trainging script
-        vel += int(self.width/2.) # Redistribute channel values to lie in range 0-N
-        vel = vel.unsqueeze(0).to(torch.long)
-        sbProf = sbProf.unsqueeze(0)
-                
-        ### Choose between mapping and looping (so far can't see a difference other than speed)
-        ### MAPPING
-#        for k in range(cube.shape[0]):cube[k,torch.unique(vel[k]).type(torch.LongTensor),:,:] = \
-#        torch.stack([*map(vel[k].__eq__,torch.unique(vel[k]))]).type(torch.float)*sbProf[k].type(torch.float) ### Fill cube
-        
-        ### ANOTHER WAY THAT DOESN'T REQUIRE *MAP FUNCTIONALITY
-        for k in range(cube.shape[0]): cube[k,:,:,:].scatter(0,vel[:,k,:,:],sbProf[:,k,:,:])
-                
-        ### LOOPING
-#        for k in range(cube.shape[0]):
-#            for i in range(self.shape): # Populate channels with sbProf
-#                for j in range(self.shape):
-#                    v_ind = vel[k,i,j].to(torch.int)
-#                    cube[k,v_ind,i,j] = sbProf[k,i,j] 
-       #cube[original==0] = 0 # Mask the output by where the input=0
-
-        return cube, v, sbProf
+        return params
     
     def test_encode(self,x):
         """ CREATE ENCODINGS FOR TESTING AND DEBUGGING """
         output = self.encoder_conv(x)
         output = self.encoder_linear(output)
+        output = self.cube_maker(output,self.shape)
+        
         return output
         
     def forward(self, x):
         """ CREATE A FORWARD PASS THROUGH THE REQUIRED MODEL FUNCTIONS """
         output = self.encoder_conv(x)
         output = self.encoder_linear(output)
-        output, vel, sbProf = self.cube_maker(output, x)
-        return output, vel, sbProf
+        output = self.cube_maker(output, self.shape)
+        return output
        
 #=============================================================================#
 #/////////////////////////////////////////////////////////////////////////////#
