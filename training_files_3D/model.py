@@ -18,11 +18,12 @@ class CAE(torch.nn.Module):
     
     """ PYTORCH CONVOLUTIONAL AUTOENCODER WITH A FUNCTIONAL DECODER """
                
-    def __init__(self, nodes, xx, yy, cube, dv):
+    def __init__(self, nodes, xx, yy, zz, cube, dv):
         super().__init__()
         
         self.xx = xx
         self.yy = yy
+        self.zz = zz
         self.cube = cube
         self.width = cube.shape[1]
         self.shape = cube.shape[2]
@@ -97,6 +98,13 @@ class CAE(torch.nn.Module):
         array = (array*2) - 1
         return array
     
+    def normal(self,mu,std,auxiliary,amplitude):
+        mu = mu.view(-1)
+        amplitude = amplitude.view(-1)
+        a = 1/(std*torch.sqrt(2*torch.tensor(pi)))
+        b = torch.exp(-0.5*(((auxiliary-mu[:,None])/std)**2))
+        return amplitude[:,None]*(a*b)       
+    
     def cube_maker(self, x, original):
         """ GENERATE THE OUTPUT CUBE USING PYTORCH FUNCTIONS """ 
         
@@ -115,6 +123,7 @@ class CAE(torch.nn.Module):
         yy_t =  self.xx*torch.cos(pos) + self.yy*torch.sin(pos)
         yy_t = yy_t / torch.sin((pi/2)-inc)
         rr_t = torch.sqrt((xx_t**2) + (yy_t**2)) # Now a cube of radii as needed for batches
+        zz_t = self.zz
         
         ### Create 2D array of SBprof given some 2D radius array
         sbProf = self.surface_brightness_profile(rr_t, a)
@@ -131,17 +140,21 @@ class CAE(torch.nn.Module):
 
         vel = vel//self.dv # Get channel indices of each pixel
         v = vel.clone() # clone the index array for visualising in trainging script
-        vel += int(self.width/2.) # Redistribute channel values to lie in range 0-N
-        vel = vel.unsqueeze(0).to(torch.long)
-        sbProf = sbProf.unsqueeze(0)
-                
+        vel += self.width/2. # Redistribute channel values to lie in range 0-N
+        vel = vel.unsqueeze(1).to(torch.long)
+        sbProf = sbProf.unsqueeze(1)
+        
+        for i in range(cube.shape[0]):
+            flattened_cube = self.normal(vel[i],3,zz_t[i], sbProf[i])
+            cube[i,:,:,:] = flattened_cube.T.view(120,64,64)
+              
         ### Choose between mapping and looping (so far can't see a difference other than speed)
         ### MAPPING
 #        for k in range(cube.shape[0]):cube[k,torch.unique(vel[k]).type(torch.LongTensor),:,:] = \
 #        torch.stack([*map(vel[k].__eq__,torch.unique(vel[k]))]).type(torch.float)*sbProf[k].type(torch.float) ### Fill cube
         
         ### ANOTHER WAY THAT DOESN'T REQUIRE *MAP FUNCTIONALITY
-        for k in range(cube.shape[0]): cube[k,:,:,:].scatter_(0,vel[:,k,:,:],sbProf[:,k,:,:])
+#        for k in range(cube.shape[0]): cube[k,:,:,:].scatter_(0,vel[:,k,:,:],sbProf[:,k,:,:])
                 
         ### LOOPING
 #        for k in range(cube.shape[0]):
@@ -149,7 +162,7 @@ class CAE(torch.nn.Module):
 #                for j in range(self.shape):
 #                    v_ind = vel[k,i,j].to(torch.int)
 #                    cube[k,v_ind,i,j] = sbProf[k,i,j] 
-       #cube[original==0] = 0 # Mask the output by where the input=0
+        #cube[original==0] = 0 # Mask the output by where the input=0
 
         return cube, v, sbProf
     
