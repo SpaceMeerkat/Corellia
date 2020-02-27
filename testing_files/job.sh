@@ -4,3 +4,5 @@ do
 	echo $value
 done	
 echo All done
+
+python3 ./tester2.py
