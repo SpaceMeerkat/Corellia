@@ -49,7 +49,7 @@ def return_cube(i):
     cube/=cube.max()
     cube[cube<np.std(cube)]=0
     pos_ang = np.deg2rad(pos_ang)
-        
+
     return cube,np.cos(pos_ang),np.sin(pos_ang),inc_ang,scale_frac,ah,Vh
 
 #_____________________________________________________________________________#

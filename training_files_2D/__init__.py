@@ -1,7 +1,6 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Oct 10 10:50:28 2019
+Created on Tue Oct 15 16:32:50 2019
 
 @author: SpaceMeerkat
 """
