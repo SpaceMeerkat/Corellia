@@ -78,7 +78,7 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         running_loss = []
         
         for _ in tqdm(range(100)):
-            prediction1, prediction2, inc = model(mom0s,mom1s)
+            prediction1, prediction2, inc, pos = model(mom0s,mom1s)
             loss1 = loss_function(prediction1, mom0s)
             loss2 = loss_function(prediction2, mom1s)
             loss = loss1 + loss2
@@ -97,7 +97,7 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         #_________________________________________________________________________#
         
         if (save_dir is not None) and (epoch == epochs-1):
-            plotter(prediction1, prediction2, mom0s, mom1s, inc, save_directory)
+            plotter(prediction1, prediction2, mom0s, mom1s, inc, pos, save_directory)
             
         #_________________________________________________________________________#
         #~~~ PRINT AVERAGE LAYER GRADIENTS   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -118,7 +118,7 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         #_________________________________________________________________________#
         
         if (model_dir is not None) and (epoch == epochs-1):
-            torch.save(model.state_dict(),model_dir+'semantic_AE.pt')  
+            torch.save(model.state_dict(),model_dir+'semantic_AE_.pt')  
             
         #_________________________________________________________________________#
         #~~~ SMAKE ENCODINGS FOR DEBUGGING   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -141,11 +141,10 @@ batch_size = 8
 ### AUXILIARY 2D X AND Y ARRAYS        
 
 ### Create the auxiliary arrays
-xxx, yyy, zzz = torch.meshgrid(torch.arange(0 - 63/2., (63/2.)+1),
-                            torch.arange(0 - 63/2., (63/2.)+1),
-                            torch.arange(0 - 63/2., (63/2.)+1))
+l = torch.arange(0 - 63/2., (63/2.)+1)
+yyy, xxx, zzz = torch.meshgrid(l,l,l)
 
-xxx, yyy, zzz = xxx.T.repeat(batch_size,1,1,1), yyy.T.repeat(batch_size,1,1,1), zzz.T.repeat(batch_size,1,1,1)
+xxx, yyy, zzz = xxx.repeat(batch_size,1,1,1), yyy.repeat(batch_size,1,1,1), zzz.repeat(batch_size,1,1,1)
 zzz *= 5
 xxx = xxx.to(device).to(torch.float)
 yyy = yyy.to(device).to(torch.float)
@@ -154,19 +153,19 @@ zzz = zzz.to(device).to(torch.float)
 #_____________________________________________________________________________#
 #_____________________________________________________________________________#
 
-yy, xx = torch.meshgrid(torch.arange(0 - 63/2., (63/2.)+1),
-                        torch.arange(0 - 63/2., (63/2.)+1))
-yy, xx = xx.repeat(batch_size,1,1), yy.repeat(batch_size,1,1)
-xx = xx.to(device).to(torch.float)
-yy = yy.to(device).to(torch.float)
+#yy, xx = torch.meshgrid(torch.arange(0 - 63/2., (63/2.)+1),
+#                        torch.arange(0 - 63/2., (63/2.)+1))
+#yy, xx = xx.repeat(batch_size,1,1), yy.repeat(batch_size,1,1)
+#xx = xx.to(device).to(torch.float)
+#yy = yy.to(device).to(torch.float)
 
 #_____________________________________________________________________________#
 #_____________________________________________________________________________#
 
-model = CAE(6,xxx,yyy,zzz,xx,yy) # Instantiate the model with 6 learnable parameters
+model = CAE(6,xxx,yyy,zzz) # Instantiate the model with 6 learnable parameters
 
 ### Train the model
-training(model,batch_size=batch_size,epochs=1,loss_function=torch.nn.MSELoss(),
+training(model,batch_size=batch_size,epochs=50,loss_function=torch.nn.MSELoss(),
          initial_lr=1e-4,model_dir=model_directory,save_dir=save_directory,gradients=False)
 
 #_____________________________________________________________________________#

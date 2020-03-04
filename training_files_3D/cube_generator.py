@@ -63,7 +63,10 @@ class cube_generator:
         sbRad,sbProf = self.surface_brightness_profile()
         vel = self.velocity_profile(sbRad)
         f = KinMS()
-        cube=f(xs=self.xsize,ys=self.ysize,vs=self.vsize,cellSize=self.cellsize,dv=self.dv,beamSize=self.beamsize,
+       
+
+### ADD IN THE INTEGRATED FLUX HERE TO MAKE KINMS RUN PROPERLY
+ cube=f(xs=self.xsize,ys=self.ysize,vs=self.vsize,cellSize=self.cellsize,dv=self.dv,beamSize=self.beamsize,
                inc=self.inc_ang,sbProf=sbProf,sbRad=sbRad,velProf=vel,velRad=sbRad,posAng=self.pos_ang,verbose=False)
         return cube
 
