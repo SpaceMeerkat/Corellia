@@ -7,7 +7,9 @@ Created on Thu Oct 10 14:15:02 2019
 """
 
 import torch
-#import kornia
+import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+device = torch.device("cuda")
 from math import pi as pi
    
 #=============================================================================#
@@ -92,18 +94,21 @@ class CAE(torch.nn.Module):
         return tensor
     
     def regularise(self,array):
+        """ PUT PARAMETERS INTO THE RANGE [0, 1] """ 
         array = array / array.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
         array = array - array.min(1)[0].min(1)[0].min(1)[0][:,None,None,None]
         array = array / array.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
         array = (array*2) - 1
         return array
     
-    def normal(self,mu,std,auxiliary,amplitude):
+    def normal(self,mu,std,auxiliary):
+        """ CREATE CHANNEL INDICES USING A NORMAL DISTRIBUTION APPROACH """ 
         mu = mu.view(-1)
-        amplitude = amplitude.view(-1)
         a = 1/(std*torch.sqrt(2*torch.tensor(pi)))
         b = torch.exp(-0.5*(((auxiliary-mu[:,None])/std)**2))
-        return amplitude[:,None]*(a*b)       
+        flat_cube = (a*b)
+        cube = flat_cube.T.view(120,64,64)
+        return cube       
     
     def cube_maker(self, x, original):
         """ GENERATE THE OUTPUT CUBE USING PYTORCH FUNCTIONS """ 
@@ -133,7 +138,7 @@ class CAE(torch.nn.Module):
         ### Define the 2D V(r) given some 2D radius array
         
         vel = self.velocity_profile(rr_t, Vh, ah) # Get velocities V(r)
-        vel = vel * torch.cos(torch.atan2(yy_t, xx_t)) * torch.sin(inc) ### Convert to line-of-sight velocities
+        vel = vel * torch.cos(torch.atan2(yy_t, xx_t)) * torch.sin(inc) # Convert to line-of-sight velocities
         vel[vel<-self.vlim] = 0 # Clip velocities out of range
         vel[vel>self.vlim] = 0 # Clip velocities out of range
     
@@ -141,29 +146,14 @@ class CAE(torch.nn.Module):
         vel = vel//self.dv # Get channel indices of each pixel
         v = vel.clone() # clone the index array for visualising in trainging script
         vel += self.width/2. # Redistribute channel values to lie in range 0-N
-        vel = vel.unsqueeze(1).to(torch.long)
+        vel = vel.unsqueeze(1)
         sbProf = sbProf.unsqueeze(1)
-        
+               
         for i in range(cube.shape[0]):
-            flattened_cube = self.normal(vel[i],3,zz_t[i], sbProf[i])
-            cube[i,:,:,:] = flattened_cube.T.view(120,64,64)
+            intermediate_cube = self.normal(vel[i],torch.tensor(3),zz_t[i])
+            intermediate_cube = intermediate_cube/intermediate_cube.max(0)[0]
+            cube[i] = intermediate_cube * sbProf[i]
               
-        ### Choose between mapping and looping (so far can't see a difference other than speed)
-        ### MAPPING
-#        for k in range(cube.shape[0]):cube[k,torch.unique(vel[k]).type(torch.LongTensor),:,:] = \
-#        torch.stack([*map(vel[k].__eq__,torch.unique(vel[k]))]).type(torch.float)*sbProf[k].type(torch.float) ### Fill cube
-        
-        ### ANOTHER WAY THAT DOESN'T REQUIRE *MAP FUNCTIONALITY
-#        for k in range(cube.shape[0]): cube[k,:,:,:].scatter_(0,vel[:,k,:,:],sbProf[:,k,:,:])
-                
-        ### LOOPING
-#        for k in range(cube.shape[0]):
-#            for i in range(self.shape): # Populate channels with sbProf
-#                for j in range(self.shape):
-#                    v_ind = vel[k,i,j].to(torch.int)
-#                    cube[k,v_ind,i,j] = sbProf[k,i,j] 
-        #cube[original==0] = 0 # Mask the output by where the input=0
-
         return cube, v, sbProf
     
     def test_encode(self,x):
@@ -182,3 +172,42 @@ class CAE(torch.nn.Module):
 #=============================================================================#
 #/////////////////////////////////////////////////////////////////////////////#
 #=============================================================================#
+        
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+            
+        ### Choose between mapping and looping (so far can't see a difference other than speed)
+        ### MAPPING
+#        for k in range(cube.shape[0]):cube[k,torch.unique(vel[k]).type(torch.LongTensor),:,:] = \
+#        torch.stack([*map(vel[k].__eq__,torch.unique(vel[k]))]).type(torch.float)*sbProf[k].type(torch.float) ### Fill cube
+        
+        ### ANOTHER WAY THAT DOESN'T REQUIRE *MAP FUNCTIONALITY
+#        for k in range(cube.shape[0]): cube[k,:,:,:].scatter_(0,vel[:,k,:,:],sbProf[:,k,:,:])
+                
+        ### LOOPING
+#        for k in range(cube.shape[0]):
+#            for i in range(self.shape): # Populate channels with sbProf
+#                for j in range(self.shape):
+#                    v_ind = vel[k,i,j].to(torch.int)
+#                    cube[k,v_ind,i,j] = sbProf[k,i,j] 
+#        cube[original==0] = 0 # Mask the output by where the input=0
+        
+#=============================================================================#
+#/////////////////////////////////////////////////////////////////////////////#
+#=============================================================================#
+             
+        

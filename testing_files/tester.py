@@ -25,8 +25,8 @@ model_path = '/home/corona/c1307135/Semantic_ML/Corellia/models/'
 #_____________________________________________________________________________#
 #_____________________________________________________________________________#
 
-model = CAE(6,xx=None,yy=None)
-model.load_state_dict(torch.load(model_path+'semantic_AE.pt'))
+model = CAE(6)
+model.load_state_dict(torch.load(model_path+'semantic_AE_.pt'))
 model = model.cpu()
 model.train(False)
 print("Model cast to CPU")

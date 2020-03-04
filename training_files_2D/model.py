@@ -9,6 +9,9 @@ Created on Thu Oct 10 14:15:02 2019
 import torch
 from math import pi as pi
 #from functions import makebeam
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
   
 #=============================================================================#
 #/////////////////////////////////////////////////////////////////////////////#
@@ -17,11 +20,9 @@ from math import pi as pi
 class CAE(torch.nn.Module):
     """ PYTORCH CONVOLUTIONAL AUTOENCODER WITH A FUNCTIONAL DECODER """
                
-    def __init__(self, nodes, xxx=None, yyy=None, zzz=None, xx=None, yy=None):
+    def __init__(self, nodes, xxx=None, yyy=None, zzz=None):
         super().__init__()
-        
-        self.xx = xx
-        self.yy = yy
+    
         self.xxx = xxx
         self.yyy = yyy
         self.zzz = zzz
@@ -92,7 +93,7 @@ class CAE(torch.nn.Module):
     def pos_ang(self, theta_1, theta_2):
         """ RECOVERING THE ANGLE AFTER A 2D ROTATION USING EULER MATRICES """
 
-        pos = torch.atan2(theta_1,theta_2) + pi
+        pos = torch.atan2(theta_1,theta_2) #+ pi
         return pos
     
     def surface_brightness_profile(self, radius_tensor, scale_length):
@@ -101,10 +102,12 @@ class CAE(torch.nn.Module):
         sbProf = torch.exp(-radius_tensor/scale_length)
         return sbProf
     
-    def velocity_profile(self, radius_tensor, Vh, ah):
+    def velocity_profile(self, radius_tensor, ah):
         """ GET THE LOS VELOCITIES FOR EACH PIXEL IN THE RADIUS ARRAY """
-
+        
+#        vel = torch.sqrt( 1-((ah/radius_tensor)*torch.atan(radius_tensor/ah)))
         vel = (2/pi)*(torch.atan(radius_tensor/ah))
+        vel = vel/vel.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
         return vel
     
     def de_regularise(self,tensor,minimum,maximum):
@@ -114,76 +117,76 @@ class CAE(torch.nn.Module):
         tensor=tensor*(maximum-minimum)/2.
         tensor=tensor+minimum
         return tensor
-    
-    def regularise(self,array):
-        """ NORMALISES THE INPUT ARRAYS INTO THE RANGE [-1,1] """
         
-        array = array / array.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
-        array = array - array.min(1)[0].min(1)[0].min(1)[0][:,None,None,None]
-        array = array / array.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
-        array = (array*2) - 1
-        return array
-    
     def regularise2(self,array):
         """ NORMALISES THE INPUT ARRAYS INTO THE RANGE [0,1] """
         
-        array = array / array.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
         array = array - array.min(1)[0].min(1)[0].min(1)[0][:,None,None,None]
+        array = array + torch.tensor(1e-10)
         array = array / array.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
         return array
        
     def rotation_all(self,x,y,z,phi,theta):
-        """ A function for rotating about the x and then z axes """
-        
+        """ A function for rotating about the z and then x axes """
+        _theta = theta + pi/2
         xmax = x.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
         ymax = y.max(1)[0].max(1)[0].max(1)[0][:,None,None,None] 
-        xx = ((x/xmax)*torch.cos(theta) - (y/ymax)*torch.sin(theta))*xmax
-        _y = ((x/xmax)*torch.sin(theta) + (y/ymax)*torch.cos(theta))*ymax    
-        ymax = _y.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
+        xx = ((x/xmax)*torch.cos(_theta) - (y/ymax)*torch.sin(_theta))*xmax
+        _y = ((x/xmax)*torch.sin(_theta) + (y/ymax)*torch.cos(_theta))*ymax    
+        _ymax = _y.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
         zmax = z.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]    
-        yy = ((_y/ymax)*torch.cos(phi) - (z/zmax)*torch.sin(phi))*ymax
-        zz = ((_y/ymax)*torch.sin(phi) + (z/zmax)*torch.cos(phi))*zmax
+        yy = ((_y/_ymax)*torch.cos(phi) - (z/zmax)*torch.sin(phi))*_ymax
+        zz = ((_y/_ymax)*torch.sin(phi) + (z/zmax)*torch.cos(phi))*zmax
         rr = torch.sqrt((xx**2)+(yy**2)+(zz**2))
-        return rr, yy, xx
+        return rr, xx, _y
     
     def cube_maker(self, x, original1, original2, shape):
         """ GENERATE THE OUTPUT CUBE USING PYTORCH FUNCTIONS """  
 
-        pos = self.pos_ang(x[:,0].clone(),x[:,1].clone())[:,None,None]          ### Poition angle
-        inc = self.de_regularise(x[:,2].clone(),pi/18.,pi/2.)[:,None,None]      ### Inclination
+        pos3 = self.pos_ang(x[:,0].clone(),x[:,1].clone())[:,None,None,None]          ### Poition angle
+        inc3 = self.de_regularise(x[:,2].clone(),pi/18.,pi/2.)[:,None,None,None]      ### Inclination
         a = self.de_regularise(x[:,3].clone(),0.1,0.5)[:,None,None,None]        ### SBprof scale length
         a = a * shape / 2
         ah = self.de_regularise(x[:,4].clone(),0.01,0.5)[:,None,None,None]      ### DM halo scale length
         ah = ah * shape / 2
         Vh = self.de_regularise(x[:,5].clone(),100,500)[:,None,None,None]       ### Maximum velocity allowed
-        
-        inc3 = inc.clone()[:,None]
-        pos3 = pos.clone()[:,None]
+                
+        # Create radius cube __________________________________________________
 
-        rr_t,yy,xx = self.rotation_all(self.xxx,self.yyy,self.zzz,inc3,pos3)   
+        rr_t, xx, yy = self.rotation_all(self.xxx,self.yyy,self.zzz,inc3,pos3)   
+        
+        # Create sbProf cube __________________________________________________
                
-        sbProf = self.surface_brightness_profile(rr_t, a)
+        sbProf = self.surface_brightness_profile(rr_t.clone(), a)
+        
+        # Create moment 0 map _________________________________________________
+        
         mom0 = sbProf.sum(axis=3)
         mom0 = mom0.unsqueeze(1)
-                                      
-        vel = self.velocity_profile(rr_t, Vh, ah) 
-        vel = vel * torch.sin(torch.atan2(yy, xx)) * torch.sin(inc3)         ### Convert to LOS velocities
-        vel = vel * sbProf
-
-        vel = vel/vel.max()
-        vel = vel*Vh*torch.sin(inc3)
+        mom0 = self.regularise2(mom0)
+        
+        # Create velocity cube ________________________________________________
+        
+        xmax = xx.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
+        ymax = yy.max(1)[0].max(1)[0].max(1)[0][:,None,None,None] 
+        
+        vel = self.velocity_profile(rr_t.clone(), ah) 
+        vel = Vh * vel * torch.sin(torch.atan2(yy/ymax, xx/xmax)-pi/2) * torch.sin(inc3)    ### Convert to LOS velocities
+               
+        # Create moment 1 map _________________________________________________
+        
+        sbProf_v = sbProf.clone()
+        mom0_v = mom0.clone()
+        
+        sbProf_v = (sbProf_v/sbProf_v.sum(3)[:,None,:,:])*mom0_v        
+        vel = vel * sbProf_v
         vel = vel.sum(axis=3)
         vel = vel.unsqueeze(1)
-        vel = vel/mom0.clone()
+        vel = vel/mom0_v
+        vel = vel/500
         
-        vel[vel == float('inf')]=0      
-        vel[vel == -float('inf')]=0
-        vel[vel!=vel] = 0
-        
-        mom0[mom0 == float('inf')]=0      
-        mom0[mom0 == -float('inf')]=0
-        mom0[mom0!=mom0] = 0
-        
+        # Mask moment maps ____________________________________________________
+                
         vel[original2==0] = 0
         mom0[original1==0] = 0
         
@@ -192,7 +195,7 @@ class CAE(torch.nn.Module):
 #        sbProf = torch.nn.functional.conv2d(sbProf,self.weights,padding=4)
 #        sbProf = torch.nn.functional.interpolate(sbProf,size=64,mode='bilinear')
                                       
-        return mom0, vel, inc3
+        return mom0, vel, inc3, pos3
     
     def test_encode(self,x1,x2):
         """ CREATE ENCODINGS FOR TESTING AND DEBUGGING """
@@ -201,8 +204,7 @@ class CAE(torch.nn.Module):
         output2 = self.mom1_encoder(x2)
         output = torch.cat((output1,output2),-1)
         output = self.encoder_linear(output)
-        pos = self.pos_ang(output[:,0].clone(),
-                           output[:,1].clone())[:,None,None]                     ### Poition angle
+        pos = self.pos_ang(output[:,0].clone(),output[:,1].clone())[:,None,None] ### Poition angle
         inc = self.de_regularise(output[:,2].clone(),pi/18.,pi/2.)[:,None,None]  ### Inclination
         a = self.de_regularise(output[:,3].clone(),0.1,0.5)[:,None,None]         ### SBprof scale length
         ah = self.de_regularise(output[:,4].clone(),0.01,0.5)[:,None,None]       ### DM halo scale length

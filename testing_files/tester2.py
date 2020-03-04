@@ -18,11 +18,6 @@ import os
 import numpy as np
 from tqdm import tqdm
 
-def recover_pos(theta1,theta2):
-    """ RECOVERING THE ANGLE AFTER A 2D ROTATION USING EULER MATRICES """
-    angle = np.rad2deg(np.arctan2(theta1,theta2)) + 180
-    return angle
-
 #_____________________________________________________________________________#
 #_____________________________________________________________________________#
 
@@ -45,12 +40,16 @@ for n in tqdm(names):
     predictions = df[[0,1,2,3,4]].values.astype(float)
     target = df[[5,6,7,8,9]].values.astype(float)
     
-    phi = target[:,2]
-    index = np.where(phi<0.25)[0]
+    pos_t = np.rad2deg(target[:,0])
+    pos_p = -np.rad2deg(predictions[:,0])
+        
+    phi_t = target[:,2]
+    index = np.where(phi_t<0.25)[0]
+    phi_p = predictions[:,2]
     
-    axs[0, 0].scatter(target[:,0],predictions[:,0],s=1,c='k')
-    axs[0, 0].scatter(target[index,0],predictions[index,0],s=1,c='r')
-    axs[0, 1].scatter(target[:,1],predictions[:,1],s=1,c='k')
+    axs[0, 0].scatter(pos_t,pos_p,s=1,c='k')
+    axs[0, 0].scatter(pos_t[index],pos_p[index],s=1,c='r')
+    axs[0, 1].scatter(phi_t,phi_p,s=1,c='k')
     axs[1, 0].scatter(target[:,2],predictions[:,2],s=1,c='k')
     axs[1, 1].scatter(target[:,4], predictions[:,4],s=1,c='k')
     axs[1, 1].scatter(target[index,4], predictions[index,4],s=1,c='r')
@@ -64,6 +63,6 @@ axs[1, 1].set(xlabel= r'$v_{h} \, (km\,s^{-1})$',
 axs[2, 0].set(xlabel= r'$a_{h}$', ylabel= r'$a_{h,pred}$') 
     
 plt.tight_layout()
-plt.savefig('/home/corona/c1307135/Semantic_ML/Corellia/Test_images/2D/semantic_AE_high.png')
+plt.savefig('/home/corona/c1307135/Semantic_ML/Corellia/Test_images/2D/semantic_AE_ALL.png')
 #_____________________________________________________________________________#
 #_____________________________________________________________________________#

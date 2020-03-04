@@ -109,19 +109,7 @@ def plotter(batch, prediction, vel, sbProf, out_dir):
         plt.colorbar()
         plt.savefig(out_dir+'3D/True'+str(i)+'.png')
     plt.close('all')
-    
-#    vel = vel[0,:,:].detach().cpu().numpy()
-#    plt.figure()
-#    plt.imshow(vel)
-#    plt.colorbar()
-#    plt.savefig(out_dir+'vel.png')
-#    
-#    sbProf = sbProf[0,:,:].detach().cpu().numpy()
-#    plt.figure()
-#    plt.imshow(np.log(sbProf+(1e-10)))
-#    plt.colorbar()
-#    plt.savefig(out_dir+'sbProf.png')
-    
+       
     return
 
 

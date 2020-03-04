@@ -38,7 +38,7 @@ def return_cube(i):
     """ MULTIPROCESS CREATION OF CUBES WITH VARIOUS POSITION ANGLES AND
         INCLINATIONS """
         
-    pos_ang = random.uniform(0,360)
+    pos_ang = random.uniform(-180,180)
     inc_ang = random.uniform(10,90)
     scale_frac = random.uniform(0.1,0.5)
     ah = random.uniform(0.01,0.5)
@@ -52,8 +52,8 @@ def return_cube(i):
     mom0 = np.nansum(cube,axis=2) 
     mom1 = np.nansum(cube*np.arange(-600,600,10)[None,None,:],axis=2) / mom0
     mom1 /= 500
-#    mom0 -= np.nanmin(mom0)
-#    mom0 /= np.nanmax(mom0)
+    mom0 -= np.nanmin(mom0)
+    mom0 /= np.nanmax(mom0)
     
     pos_ang = np.deg2rad(pos_ang)
     inc_ang = np.deg2rad(inc_ang)
@@ -87,7 +87,7 @@ def recover_pos(theta1,theta2):
 #_____________________________________________________________________________#
     
 
-def plotter(s, v, mom0, mom1, inc, out_dir):    
+def plotter(s, v, mom0, mom1, inc, pos, out_dir):    
     """ PLOTTING THE PREDICTED AND TRUE VELOCITY FIELDS """
     
     s = s.detach().cpu().numpy()
@@ -96,31 +96,33 @@ def plotter(s, v, mom0, mom1, inc, out_dir):
     mom1 = mom1.detach().cpu().numpy()
     inc = inc[:,0,0].detach().cpu().numpy()
     inc = np.rad2deg(inc)
+    pos = pos[:,0,0].detach().cpu().numpy()
+    pos = np.rad2deg(pos)
     
     for i in range(v.shape[0]):
         plt.figure()
         
-        plt.subplot(224)
-        b = v[i,0,:,:]
-        plt.imshow(b,cmap=sauron)
-        plt.colorbar(fraction=0.046, pad=0.04)
-    
         plt.subplot(223)
-        b = mom1[i,0,:,:]
-        plt.imshow(b,cmap=sauron)
+        b2 = mom1[i,0,:,:]
+        plt.imshow(b2,cmap=sauron)
+        plt.colorbar(fraction=0.046, pad=0.04)
+        
+        plt.subplot(224)
+        b1 = v[i,0,:,:]
+        plt.imshow(b1,cmap=sauron, vmax=b2.max(), vmin=b2.min())
         plt.colorbar(fraction=0.046, pad=0.04)
         
         plt.subplot(222)
         b = s[i,0,:,:]
         plt.imshow(b,cmap='magma')
         plt.colorbar(fraction=0.046, pad=0.04)
-        plt.title('PREDICTED: %.2f' % inc[i])
+        plt.title('PREDICTED: %.2f' %inc[i])
     
         plt.subplot(221)
         b = mom0[i,0,:,:]
         plt.imshow(b,cmap='magma')
         plt.colorbar(fraction=0.046, pad=0.04)
-        plt.title('TRUE')
+        plt.title('TRUE: %.2f' %pos[i])
         
         plt.tight_layout()
         plt.savefig(out_dir+str(i)+'.png')
