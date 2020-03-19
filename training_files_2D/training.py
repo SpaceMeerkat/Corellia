@@ -15,8 +15,14 @@ import os
 from tqdm import tqdm
 import torch
 
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 from functions import learning_rate, return_cube, plotter
 from model import CAE
+from cube_generator import cube_generator
+from sauron_colormap import sauron
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 torch.cuda.benchmark=True
@@ -77,8 +83,8 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         
         running_loss = []
         
-        for _ in tqdm(range(100)):
-            prediction1, prediction2, inc, pos = model(mom0s,mom1s)
+        for _ in tqdm(range(1000)):
+            prediction1, prediction2, inc, pos, pars, vmax = model(mom0s,mom1s)
             loss1 = loss_function(prediction1, mom0s)
             loss2 = loss_function(prediction2, mom1s)
             loss = loss1 + loss2
@@ -86,11 +92,53 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
             prediction2.retain_grad()
             optim.zero_grad(); loss.backward(); optim.step();
             running_loss.append(loss.detach().cpu())
-            
+                        
         print("\n Mean loss: %.6f" % np.mean(running_loss),
                   "\t Loss std: %.6f" % np.std(running_loss),
                   "\t Learning rate: %.6f:" % learning_rate(initial_lr,epoch))
         print('_'*73)
+        
+        index = -2
+        _a = pars[0][index].detach().cpu().numpy().reshape(-1)
+        _pos = pars[1][index].detach().cpu().numpy().reshape(-1)
+        _inc = pars[2][index].detach().cpu().numpy().reshape(-1)
+        _ah = pars[3][index].detach().cpu().numpy().reshape(-1)
+        _Vh = pars[4][index].detach().cpu().numpy().reshape(-1)
+        
+        print(pars[4].view(-1))
+        print(pars[3].view(-1))
+        print(pars[0].view(-1))
+        
+        cube = cube_generator(_a/32, np.rad2deg(_pos)+180, np.rad2deg(_inc), 1000, _ah/32, _Vh).cube_creation()
+        _mom0 = np.nansum(cube,axis=2) 
+
+        _mom1 = np.nansum(cube*np.arange(-600,600,10)[None,None,:],axis=2) / _mom0
+        _mom1 /= 500
+        _mom1[_mom1!=_mom1]=0
+        vmax = mom1s[index,0,:,:].detach().cpu().numpy().max()
+        print('VMAX: ',vmax)
+        print('k_VMAX: ',np.nanmax(_mom1))      
+        
+        print("KINMS err: ", np.nansum(np.sqrt((_mom1**2) - (mom1s[index,0,:,:]**2).detach().cpu().numpy())))
+        print("MODEL err: ", np.nansum(np.sqrt((mom1s[index,0,:,:]**2).detach().cpu().numpy() - (prediction2[index,0,:,:]**2).detach().cpu().numpy())))
+        
+        plt.figure()
+        plt.imshow(_mom1,vmin=-vmax,vmax=vmax,cmap=sauron)
+        plt.colorbar()
+        plt.savefig('/home/corona/c1307135/Semantic_ML/Corellia/images/2D/kinms.png')
+        
+        plt.figure()
+        plt.imshow(prediction2[-2,0,:,:].detach().cpu().numpy(),vmin=-vmax,vmax=vmax,cmap=sauron)
+        plt.colorbar()
+        plt.savefig('/home/corona/c1307135/Semantic_ML/Corellia/images/2D/model.png')
+        
+#        sbProf = sbProf.detach().cpu().numpy()
+#        for i in range(sbProf.shape[3]):
+#            plt.figure()
+#            plt.imshow(sbProf[-2,:,:,i])
+#            plt.colorbar()
+#            plt.savefig('/home/corona/c1307135/Semantic_ML/Corellia/images/2D/test/'+str(i)+'.png')
+        
         
         #_________________________________________________________________________#
         #~~~ CREATE ANY PLOTS   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -145,7 +193,6 @@ l = torch.arange(0 - 63/2., (63/2.)+1)
 yyy, xxx, zzz = torch.meshgrid(l,l,l)
 
 xxx, yyy, zzz = xxx.repeat(batch_size,1,1,1), yyy.repeat(batch_size,1,1,1), zzz.repeat(batch_size,1,1,1)
-zzz *= 5
 xxx = xxx.to(device).to(torch.float)
 yyy = yyy.to(device).to(torch.float)
 zzz = zzz.to(device).to(torch.float)
@@ -163,9 +210,10 @@ zzz = zzz.to(device).to(torch.float)
 #_____________________________________________________________________________#
 
 model = CAE(6,xxx,yyy,zzz) # Instantiate the model with 6 learnable parameters
-
+#print(model)
+#torch.nn.MSELoss()
 ### Train the model
-training(model,batch_size=batch_size,epochs=50,loss_function=torch.nn.MSELoss(),
+training(model,batch_size=batch_size,epochs=1,loss_function=torch.nn.SmoothL1Loss(),
          initial_lr=1e-4,model_dir=model_directory,save_dir=save_directory,gradients=False)
 
 #_____________________________________________________________________________#

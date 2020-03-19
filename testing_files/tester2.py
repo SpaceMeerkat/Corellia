@@ -43,9 +43,9 @@ for n in tqdm(names):
     pos_t = np.rad2deg(target[:,0])
     pos_p = -np.rad2deg(predictions[:,0])
         
-    phi_t = target[:,2]
-    index = np.where(phi_t<0.25)[0]
-    phi_p = predictions[:,2]
+    phi_t = np.rad2deg(target[:,1])
+    index = np.where(phi_t<25)[0]
+    phi_p = np.rad2deg(predictions[:,1])
     
     axs[0, 0].scatter(pos_t,pos_p,s=1,c='k')
     axs[0, 0].scatter(pos_t[index],pos_p[index],s=1,c='r')

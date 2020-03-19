@@ -27,7 +27,7 @@ def learning_rate(initial_lr, epoch):
     """Sets the learning rate to the initial LR decayed by a factor of 10 every
     N epochs"""
     
-    lr = initial_lr * (0.95 ** (epoch// 1))
+    lr = initial_lr * (0.975 ** (epoch// 1))
     
     return lr 
 
@@ -40,11 +40,18 @@ def return_cube(i):
         
     pos_ang = random.uniform(-180,180)
     inc_ang = random.uniform(10,90)
-    scale_frac = random.uniform(0.1,0.5)
+    a = random.uniform(0.1,0.5)
     ah = random.uniform(0.01,0.5)
     Vh = random.uniform(100,500)
     
-    cube = cube_generator(scale_length_frac=scale_frac,pos_ang=pos_ang,
+    Vh = 500
+    a = 0.5
+    ah = 1
+    pos_ang = 90
+    inc = [10,20,30,40,50,60,70,80]
+    inc_ang = inc[-2]
+    
+    cube = cube_generator(a=a,pos_ang=pos_ang,
                           inc_ang=inc_ang,resolution=1000,ah=ah,
                           Vh=Vh).cube_creation()  
     
@@ -58,7 +65,7 @@ def return_cube(i):
     pos_ang = np.deg2rad(pos_ang)
     inc_ang = np.deg2rad(inc_ang)
         
-    return (mom0,mom1),pos_ang,inc_ang,scale_frac,ah,Vh
+    return (mom0,mom1),pos_ang,inc_ang,a,ah,Vh
 
 #_____________________________________________________________________________#
 #_____________________________________________________________________________#
@@ -104,7 +111,7 @@ def plotter(s, v, mom0, mom1, inc, pos, out_dir):
         
         plt.subplot(223)
         b2 = mom1[i,0,:,:]
-        plt.imshow(b2,cmap=sauron)
+        plt.imshow(b2,cmap=sauron, vmax=b2.max(), vmin=b2.min())
         plt.colorbar(fraction=0.046, pad=0.04)
         
         plt.subplot(224)

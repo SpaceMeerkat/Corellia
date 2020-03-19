@@ -24,8 +24,8 @@ class cube_generator:
     """ TAKES PHYSICAL ARGUMENTS AND CALLS KinMS.py TO CREATE A FAKE DATA CUBE 
         FOR TRAINING A NN MODEL ON """
         
-    def __init__(self,scale_length_frac,pos_ang,inc_ang,resolution,ah,Vh):
-            self.scale_length_frac = scale_length_frac
+    def __init__(self,a,pos_ang,inc_ang,resolution,ah,Vh):
+            self.a = a
             self.scale_length = None
             self.pos_ang = pos_ang
             self.inc_ang = inc_ang
@@ -44,7 +44,7 @@ class cube_generator:
         """ CREATE A SURFACE BRIGHTNESS PROFILE THAT SCALES WITH GALACTIC 
             RADIUS """
         
-        self.scale_length = self.extent * self.scale_length_frac
+        self.scale_length = self.extent * self.a
         radii = np.linspace(0,self.extent,self.resolution)
         sbProf = np.exp(-radii/self.scale_length)
         return radii,sbProf
@@ -53,7 +53,8 @@ class cube_generator:
         """ CREATE A VELOCITY PROFILE THAT SCALES WITH GALACTIC RADIUS """
         
         self.ah = self.extent * self.ah
-        vel = ((2*self.Vh)/np.pi)*(np.arctan(radii[1:]/self.ah))
+#        vel = ((2*self.Vh)/np.pi)*(np.arctan(radii[1:]/self.ah))
+        vel = ((2*self.Vh)/np.pi)*(1.273239)*(np.arctan(np.pi*(radii[1:]/self.ah)))
         vel = np.insert(vel,0,1)
         return vel
        
