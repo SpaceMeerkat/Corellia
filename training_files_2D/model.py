@@ -160,11 +160,13 @@ class CAE(torch.nn.Module):
         ah = self.de_regularise(x[:,4].clone(),0.1,0.5)[:,None,None,None]        ### DM halo scale length
         ah = ah * shape / 2
         Vh = self.de_regularise(x[:,5].clone(),100,500)[:,None,None,None]       ### Maximum velocity allowed
-        a_z = a.clone()*0.2
+        a_z = a.clone()*0.3
         
-        ah = ah/ah * 32
+        a = a/a * 16
         Vh = Vh/Vh * 500
-        inc3 = inc3/inc3 * 70/90 * pi/2
+        pos3 = pos3/pos3 * -pi/2
+#        inc3 = inc3/inc3 * 70/90 * pi/2
+        ah = ah/ah * 8
                                      
         # Create radius cube __________________________________________________
 

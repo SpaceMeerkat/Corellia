@@ -65,7 +65,7 @@ class cube_generator:
         vel = self.velocity_profile(sbRad)
         cube=KinMS(xs=self.xsize,ys=self.ysize,vs=self.vsize,cellSize=self.cellsize,dv=self.dv,
                    beamSize=self.beamsize,inc=self.inc_ang,sbProf=sbProf,sbRad=sbRad,velProf=vel,
-                   velRad=sbRad,posAng=self.pos_ang,intFlux=30,verbose=False).model_cube()
+                   velRad=sbRad,posAng=self.pos_ang,intFlux=30,verbose=False, cleanOut=True).model_cube()
         return cube
 
 #=============================================================================#

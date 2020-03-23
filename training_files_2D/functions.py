@@ -46,7 +46,7 @@ def return_cube(i):
     
     Vh = 500
     a = 0.5
-    ah = 1
+    ah = 0.25
     pos_ang = 90
     inc = [10,20,30,40,50,60,70,80]
     inc_ang = inc[-2]

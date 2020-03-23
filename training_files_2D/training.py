@@ -105,9 +105,9 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         _ah = pars[3][index].detach().cpu().numpy().reshape(-1)
         _Vh = pars[4][index].detach().cpu().numpy().reshape(-1)
         
-        print(pars[4].view(-1))
-        print(pars[3].view(-1))
-        print(pars[0].view(-1))
+        print('Vh: ',pars[4].view(-1))
+        print('ah: ',pars[3].view(-1))
+        print('a: ',pars[0].view(-1))
         
         cube = cube_generator(_a/32, np.rad2deg(_pos)+180, np.rad2deg(_inc), 1000, _ah/32, _Vh).cube_creation()
         _mom0 = np.nansum(cube,axis=2) 
