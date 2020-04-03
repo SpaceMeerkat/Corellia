@@ -43,14 +43,15 @@ for n in tqdm(names):
     pos_t = np.rad2deg(target[:,0])
     pos_p = -np.rad2deg(predictions[:,0])
         
-    phi_t = target[:,2]
-    index = np.where(phi_t<0.25)[0]
-    phi_p = predictions[:,2]
+    phi_t = np.rad2deg(target[:,1])
+    index = np.where(phi_t<25)[0]
+    phi_p = np.rad2deg(predictions[:,1])
     
     axs[0, 0].scatter(pos_t,pos_p,s=1,c='k')
     axs[0, 0].scatter(pos_t[index],pos_p[index],s=1,c='r')
     axs[0, 1].scatter(phi_t,phi_p,s=1,c='k')
     axs[1, 0].scatter(target[:,2],predictions[:,2],s=1,c='k')
+    axs[1, 0].scatter(target[index,2],predictions[index,2],s=3,c='r')
     axs[1, 1].scatter(target[:,4], predictions[:,4],s=1,c='k')
     axs[1, 1].scatter(target[index,4], predictions[index,4],s=1,c='r')
     axs[2, 0].scatter(target[:,3],predictions[:,3],s=1,c='k')
@@ -63,6 +64,6 @@ axs[1, 1].set(xlabel= r'$v_{h} \, (km\,s^{-1})$',
 axs[2, 0].set(xlabel= r'$a_{h}$', ylabel= r'$a_{h,pred}$') 
     
 plt.tight_layout()
-plt.savefig('/home/corona/c1307135/Semantic_ML/Corellia/Test_images/2D/semantic_AE_ALL.png')
+plt.savefig('/home/corona/c1307135/Semantic_ML/Corellia/Test_images/2D/semantic_AE_REMOTE.png')
 #_____________________________________________________________________________#
 #_____________________________________________________________________________#
