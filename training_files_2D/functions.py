@@ -41,15 +41,15 @@ def return_cube(i):
     pos_ang = random.uniform(-180,180)
     inc_ang = random.uniform(10,90)
     a = random.uniform(0.1,0.5)
-    ah = random.uniform(0.01,0.5)
-    Vh = random.uniform(100,500)
+    ah = random.uniform(0.1,0.5)
+    Vh = random.uniform(50,500)
     
-    Vh = 500
-    a = 0.5
-    ah = 0.25
-    pos_ang = 90
-    inc = [10,20,30,40,50,60,70,80]
-    inc_ang = inc[-2]
+    #Vh = 500
+    #a = 0.5
+    #ah = 0.25
+    #pos_ang = 90
+    #inc = [10,20,30,40,50,60,70,80]
+    #inc_ang = inc[-2]
     
     cube = cube_generator(a=a,pos_ang=pos_ang,
                           inc_ang=inc_ang,resolution=1000,ah=ah,

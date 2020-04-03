@@ -13,7 +13,7 @@ import torch
 import multiprocessing as mp
 import sys
 sys.path.append("../training_files_2D/")
-from model import CAE
+from model2 import CAE
 from functions import return_cube
 import pandas as pd
 

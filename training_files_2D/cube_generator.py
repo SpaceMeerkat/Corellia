@@ -53,9 +53,8 @@ class cube_generator:
         """ CREATE A VELOCITY PROFILE THAT SCALES WITH GALACTIC RADIUS """
         
         self.ah = self.extent * self.ah
-#        vel = ((2*self.Vh)/np.pi)*(np.arctan(radii[1:]/self.ah))
         vel = ((2*self.Vh)/np.pi)*(1.273239)*(np.arctan(np.pi*(radii[1:]/self.ah)))
-        vel = np.insert(vel,0,1)
+        vel = np.insert(vel,0,1e-10)
         return vel
        
     def cube_creation(self):
