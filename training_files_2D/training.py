@@ -75,6 +75,12 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         mom1s = mom1s.to(device).to(torch.float)
         
         targets = targets.to(device).to(torch.float)
+                
+        pos_t = targets[:,0]
+        ah = targets[:,3]
+        inc = targets[:,1]
+        a = targets[:,2]
+        V = targets[:,-1]
 
         #_________________________________________________________________________#
         #~~~ TRAIN THE MODEL   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~#
@@ -86,7 +92,8 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
         
         for _ in tqdm(range(100)):
             
-            prediction1, prediction2, inc, pos, vmax = model(mom0s,mom1s)
+            prediction1, prediction2, inc, pos, vmax = model(mom0s,mom1s,pos_t,ah,inc,
+                                                             a,V)
             loss1 = loss_function(prediction1, mom0s)
             loss2 = loss_function(prediction2, mom1s)
             loss = loss1 + loss2
@@ -94,7 +101,7 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
             prediction2.retain_grad()
             optim.zero_grad(); loss.backward(); optim.step();
             running_loss.append(loss.detach().cpu())
-                        
+                                    
         print("\n Mean loss: %.6f" % np.mean(running_loss),
                   "\t Loss std: %.6f" % np.std(running_loss),
                   "\t Learning rate: %.6f:" % learning_rate(initial_lr,epoch))
@@ -143,7 +150,7 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
 #_____________________________________________________________________________#
 #_____________________________________________________________________________#
                 
-batch_size = 8
+batch_size = 64
 
 ### RUN THE TRAINING PROCEDURE HERE AND PROVIDE THE NETWORK WITH THE REQUIRED
 ### AUXILIARY 2D X AND Y ARRAYS        
@@ -157,16 +164,19 @@ xxx = xxx.to(device).to(torch.float)
 yyy = yyy.to(device).to(torch.float)
 zzz = zzz.to(device).to(torch.float)
 
+mask = torch.zeros((xxx.shape)).to(device).to(torch.float)
+thresh = torch.tensor([3]).to(device).to(torch.float)
+
 #_____________________________________________________________________________#
 #_____________________________________________________________________________#
 
-model = CAE(6,xxx,yyy,zzz) # Instantiate the model with 6 learnable parameters
+model = CAE(xxx,yyy,zzz,thresh,mask) # Instantiate the model with 6 learnable parameters
 print(model)
 #torch.nn.MSELoss()
 #torch.nn.SmoothL1Loss()
 
 ### Train the model
-training(model,batch_size=batch_size,epochs=50,loss_function=torch.nn.MSELoss(),
+training(model,batch_size=batch_size,epochs=400,loss_function=torch.nn.MSELoss(),
          initial_lr=1e-4,model_dir=model_directory,save_dir=save_directory,gradients=False)
 
 #_____________________________________________________________________________#

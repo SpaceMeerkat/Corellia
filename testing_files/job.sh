@@ -1,6 +1,6 @@
 rm -r ../pickle_files/*
 
-for value in `seq 10`
+for value in `seq 20`
 do
 	python3 ./tester.py
 	echo $value
