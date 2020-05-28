@@ -37,8 +37,8 @@ class cube_generator:
             self.ysize=64
             self.vsize=1200
             self.cellsize=1
-            self.dv=10
-            self.beamsize=[4,4,0]
+            self.dv=1
+            self.beamsize=[2,2,0]
             
     def surface_brightness_profile(self):
         """ CREATE A SURFACE BRIGHTNESS PROFILE THAT SCALES WITH GALACTIC 
@@ -52,8 +52,8 @@ class cube_generator:
     def velocity_profile(self,radii):
         """ CREATE A VELOCITY PROFILE THAT SCALES WITH GALACTIC RADIUS """
         
-        self.ah = self.extent * self.ah
-        vel = ((2*self.Vh)/np.pi)*(1.273239)*(np.arctan(np.pi*(radii[1:]/self.ah)))
+        vel = self.Vh * (2/np.pi) * np.arctan(radii[1:]/(self.ah*self.extent)) # arctan function option
+        # vel = self.Vh * (1-np.exp(-radii[1:]/(self.ah*self.extent)))
         vel = np.insert(vel,0,1e-10)
         return vel
        
@@ -64,7 +64,8 @@ class cube_generator:
         vel = self.velocity_profile(sbRad)
         cube=KinMS(xs=self.xsize,ys=self.ysize,vs=self.vsize,cellSize=self.cellsize,dv=self.dv,
                    beamSize=self.beamsize,inc=self.inc_ang,sbProf=sbProf,sbRad=sbRad,velProf=vel,
-                   velRad=sbRad,posAng=self.pos_ang,intFlux=30,verbose=False, cleanOut=True).model_cube()
+                   velRad=sbRad,posAng=self.pos_ang,intFlux=30,verbose=False, 
+                   cleanOut=False).model_cube()
         return cube
 
 #=============================================================================#
