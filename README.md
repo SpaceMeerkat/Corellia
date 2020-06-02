@@ -21,7 +21,7 @@ Background material for understanding the problem we are trying to model can be 
 
 We have successfully learned 4 parameters using our self-supervised network. The true vs predicted plots for each are shown in the image below.
 
-<img src="Test_images/2D/semantic_AE_REMOTE_fixed_biggestbatch_dropout.png" width="600"/>
+<img src="Test_images/2D/semantic_AE_REMOTE.png" width="600"/>
 
 We have yet to tighten up the model's predictive accuracy, particularly for the surface brightness and velocity profile scale lengths. 
 
