@@ -2,7 +2,7 @@ rm -r ../pickle_files/*
 
 for value in `seq 20`
 do
-	python3 ./tester.py
+	python3 ./MCtester.py
 	echo $value
 done	
 echo All done

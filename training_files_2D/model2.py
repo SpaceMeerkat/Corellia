@@ -23,8 +23,8 @@ class CAE(torch.nn.Module):
         self.yyy = yyy
         self.zzz = zzz
         
-        self.thresh = thresh
-        self.mask = mask
+        self.thresh = thresh  # Optional parameters for testing the use of 
+        self.mask = mask      # masking by brightness sensitivity
         
         self.conv0 = torch.nn.Conv2d(1,16,3,1,padding=1)
         self.conv1 = torch.nn.Conv2d(16,32,3,1,padding=1)
@@ -44,6 +44,7 @@ class CAE(torch.nn.Module):
         self.lc4 = torch.nn.Linear(256,2)
         self.relu = torch.nn.ReLU()
         self.hardtanh = torch.nn.Hardtanh(min_val=-1,max_val=1.)
+        self.drop = torch.nn.Dropout(p=0.1)
        
     def BRIGHTNESS_encoder(self,x):
         """ FEATURE EXTRACTION THROUGH CONVOLUTIONAL LAYERS """
@@ -84,11 +85,13 @@ class CAE(torch.nn.Module):
         
         x1 = self.lc1(x1)
         x1 = self.relu(x1)
+        x1 = self.drop(x1)
         x1 = self.lc2(x1)
         x1 = self.hardtanh(x1)
 
         x2 = self.lc3(x2)
         x2 = self.relu(x2)
+        x2 = self.drop(x2)
         x2 = self.lc4(x2)
         x2 = self.hardtanh(x2)
 
@@ -153,14 +156,21 @@ class CAE(torch.nn.Module):
         V_SCALE_LENGTH = self.de_regularise(x[:,2].clone(),0.1,0.8)[:,None,None,None]     ### DM halo scale length
         V_SCALE_LENGTH = V_SCALE_LENGTH * shape/2
         MAX_VELOCITY = self.de_regularise(x[:,3].clone(),0.1,1)[:,None,None,None]       ### Maximum velocity allowed
-        a_z = SCALE_LENGTH.detach()*0 + 1
+        a_z = SCALE_LENGTH.detach()*0 + 1                                           ### Z brightness scale length (keep it low for a disk)
+        
+# =============================================================================
+#         Uncomment these to pass forward the target parameters rather than 
+#         learned parameters, for debugging and covariance testing.
+# =============================================================================
         
         Z_ANGLE = Z_ANGLE.clone()[:,None,None,None]
         # V_SCALE_LENGTH = ah.clone()[:,None,None,None] * shape/2
         # X_ANGLE = phi.clone()[:,None,None,None]
         # MAX_VELOCITY = V.clone()[:,None,None,None] / 500
         # SCALE_LENGTH = a.clone()[:,None,None,None] * shape/2
-        # a_z = SCALE_LENGTH.clone()
+        # a_z = SCALE_LENGTH.detach()*0 + 1
+        
+# =============================================================================
                                              
         # Create radius cube __________________________________________________
 
@@ -213,7 +223,6 @@ class CAE(torch.nn.Module):
         
         output1 = self.BRIGHTNESS_encoder(x1)
         output2 = self.VELOCITY_encoder(x2)
-        #output = torch.cat((output1,output2),-1)
         output = self.encoder_linear(output1,output2)
         #Z_ANGLE = self.pos_ang(output[:,2].clone(),output[:,3].clone())[:,None,None] 
         Z_ANGLE = Z_ANGLE.clone()[:,None,None,None]
@@ -229,7 +238,6 @@ class CAE(torch.nn.Module):
         
         output1 = self.BRIGHTNESS_encoder(x1)
         output2 = self.VELOCITY_encoder(x2)
-        #output = torch.cat((output1,output2),-1)
         output = self.encoder_linear(output1,output2)
         output = self.cube_maker(output,x1,x2,pos,ah,phi,a,v,shape=64)
         return output
