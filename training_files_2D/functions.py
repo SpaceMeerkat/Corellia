@@ -69,29 +69,6 @@ def return_cube(i):
 #_____________________________________________________________________________#
 #_____________________________________________________________________________#
     
-def pos_loss(output, target):
-    
-    """ LOSS FUNCTION FOR POSITION ANGLE BASED ON MINIMUM ARC SEPARATION """
-        
-    loss = torch.mean(torch.stack([ (output-target)**2,
-                                   (1-torch.abs(output-target))**2] ).min(dim=0)[0]) 
-    
-    return loss
-
-#_____________________________________________________________________________#
-#_____________________________________________________________________________#
-    
-def recover_pos(theta1,theta2):
-    
-    """ RECOVERING THE ANGLE AFTER A 2D ROTATION USING EULER MATRICES """
-    
-    angle = np.rad2deg(np.arctan2(theta1,theta2)) + 180
-    
-    return angle
-
-#_____________________________________________________________________________#
-#_____________________________________________________________________________#
-    
 
 def plotter(s, v, mom0, mom1, inc, pos, out_dir):    
     """ PLOTTING THE PREDICTED AND TRUE VELOCITY FIELDS """
@@ -224,7 +201,8 @@ def makebeam(xpixels, ypixels, beamSize, cellSize=1, cent=None):
 
         return trimmed_psf
 
-
+#_____________________________________________________________________________#
+#_____________________________________________________________________________#
 
 
 

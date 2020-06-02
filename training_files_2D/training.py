@@ -150,7 +150,7 @@ def training(model:torch.nn.Module,batch_size,epochs,loss_function,initial_lr,
 #_____________________________________________________________________________#
 #_____________________________________________________________________________#
                 
-batch_size = 64
+batch_size = 8
 
 ### RUN THE TRAINING PROCEDURE HERE AND PROVIDE THE NETWORK WITH THE REQUIRED
 ### AUXILIARY 2D X AND Y ARRAYS        
@@ -172,11 +172,9 @@ thresh = torch.tensor([3]).to(device).to(torch.float)
 
 model = CAE(xxx,yyy,zzz,thresh,mask) # Instantiate the model with 6 learnable parameters
 print(model)
-#torch.nn.MSELoss()
-#torch.nn.SmoothL1Loss()
 
 ### Train the model
-training(model,batch_size=batch_size,epochs=400,loss_function=torch.nn.MSELoss(),
+training(model,batch_size=batch_size,epochs=200,loss_function=torch.nn.MSELoss(),
          initial_lr=1e-4,model_dir=model_directory,save_dir=save_directory,gradients=False)
 
 #_____________________________________________________________________________#

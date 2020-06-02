@@ -39,30 +39,36 @@ for n in tqdm(range(len(names))):
     
     predictions = df[[0,1,2,3,4]].values.astype(float)
     target = df[[5,6,7,8,9]].values.astype(float)
+    errors = df[[10,11,12,13,14]].values.astype(float)
     
     pos_t = np.rad2deg(target[:,0])
     pos_p = -np.rad2deg(predictions[:,0])
+    pos_e = np.rad2deg(errors[:,0])
         
     phi_t = np.rad2deg(target[:,1])
     index = np.where(phi_t<40)[0]
     phi_p = np.rad2deg(predictions[:,1])
+    phi_e = np.rad2deg(errors[:,1])
     
     # axs[0, 0].scatter(pos_t,pos_p,s=1,c='k')
     # axs[0, 0].scatter(pos_t[index],pos_p[index],s=1,c='r')
-    axs[0, 0].scatter(phi_t,phi_p,s=1,c='k')
+    axs[0, 0].errorbar(phi_t,phi_p,yerr=phi_e,fmt='k.',ecolor='k')
     axs[0, 0].plot([10,90],[10,90],'b--')
-    axs[0, 1].scatter(target[:,2],predictions[:,2],s=1,c='k')
-    axs[0, 1].scatter(target[index,2],predictions[index,2],s=3,c='r',label='i < 45$^{\circ}$')
+    axs[0, 1].errorbar(target[:,2],predictions[:,2],yerr=errors[:,2],fmt='k.',ecolor='k')
+    axs[0, 1].errorbar(target[index,2],predictions[index,2],yerr=errors[index,2],
+                      fmt='r.',ecolor='r',label='i < 45$^{\circ}$')
     if n == 0:
         axs[0, 1].legend(loc='best')
     axs[0, 1].plot([0.1,0.35],[0.1,0.35],'b--')
-    axs[1, 0].scatter(target[:,4], predictions[:,4],s=1,c='k')
-    axs[1, 0].scatter(target[index,4], predictions[index,4],s=1,c='r',label='i < 45$^{\circ}$')
+    axs[1, 0].errorbar(target[:,4], predictions[:,4],yerr=errors[:,4],fmt='k.',ecolor='k')
+    axs[1, 0].errorbar(target[index,4], predictions[index,4],yerr=errors[index,4],
+                       fmt='r.',ecolor='r',label='i < 45$^{\circ}$')
     axs[1, 0].plot([50,500],[50,500],'b--')
     if n == 0:
         axs[1, 0].legend(loc='best')
-    axs[1, 1].scatter(target[:,3],predictions[:,3],s=1,c='k')
-    axs[1, 1].scatter(target[index,3],predictions[index,3],s=1,c='r',label='i < 45$^{\circ}$')
+    axs[1, 1].errorbar(target[:,3],predictions[:,3],yerr=errors[:,3],fmt='k.',ecolor='k')
+    axs[1, 1].errorbar(target[index,3],predictions[index,3],yerr=errors[index,3],
+                       fmt='r.',ecolor='r',label='i < 45$^{\circ}$')
     axs[1, 1].plot([0.1,0.8],[0.1,0.8],'b--')
     if n == 0:
         axs[1, 1].legend(loc='best')
