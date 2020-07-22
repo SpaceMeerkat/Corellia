@@ -13,6 +13,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
+from kornia.geometry.transform import rotate
   
 #=============================================================================#
 #/////////////////////////////////////////////////////////////////////////////#
@@ -42,7 +43,7 @@ class CAE(torch.nn.Module):
         self.lc1 = torch.nn.Linear(2048,256)
         self.lc2 = torch.nn.Linear(256,2)
         self.lc3 = torch.nn.linear(2048,256)
-        self.lc4 = torch.nn.linear(256,4)
+        self.lc4 = torch.nn.linear(256,2)
         self.relu = torch.nn.ReLU()
         self.hardtanh = torch.nn.Hardtanh(min_val=-1,max_val=1.)
         
@@ -109,13 +110,13 @@ class CAE(torch.nn.Module):
     def surface_brightness_profile(self, radius_tensor, scale_length, z, scale_length_z):
         """ GET THE SURFACE BRIGHTNESS FOR EACH PIXEL IN THE RADIUS ARRAY """
         
-        sbProf = torch.exp((-radius_tensor/scale_length)+(-z/scale_length_z))
+        sbProf = torch.exp((-radius_tensor/scale_length)+(torch.abs(-z)/scale_length_z))
         return sbProf
     
-    def velocity_profile(self, radius_tensor):
+    def velocity_profile(self, V_sin_i, radius_tensor):
         """ GET THE LOS VELOCITIES FOR EACH PIXEL IN THE RADIUS ARRAY """
 
-        vel = (2/pi)*(1.273239)*(torch.atan(pi*radius_tensor))
+        vel = V_sin_i * (2/pi) * torch.atan(radius_tensor)
         return vel
     
     def de_regularise(self,tensor,minimum,maximum):
@@ -134,32 +135,29 @@ class CAE(torch.nn.Module):
         array = array / array.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
         return array
        
-    def rotation_all(self,x,y,z,phi,theta):
+    def rotation_all(self,x,y,z,X_ANGLE):
         """ A function for rotating about the z and then x axes """
-        _theta = theta + pi/2
-        xmax = x.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
-        ymax = y.max(1)[0].max(1)[0].max(1)[0][:,None,None,None] 
-        xx = ((x/xmax)*torch.cos(_theta) - (y/ymax)*torch.sin(_theta))*xmax
-        _y = ((x/xmax)*torch.sin(_theta) + (y/ymax)*torch.cos(_theta))*ymax    
-        _ymax = _y.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
-        zmax = z.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]    
-        yy = ((_y/_ymax)*torch.cos(phi) - (z/zmax)*torch.sin(phi))*_ymax
-        zz = ((_y/_ymax)*torch.sin(phi) + (z/zmax)*torch.cos(phi))*zmax
-        rr = torch.sqrt((xx**2)+(yy**2)+(zz**2))
-        rr_xy = torch.sqrt((xx**2)+(yy**2))
+        xmax = x.max(1)[0].max(1)[0].max(1)[0]
+        zmax = z.max(1)[0].max(1)[0].max(1)[0]
+        
+        xx = ((x/xmax)*torch.cos(X_ANGLE) + (z/zmax)*torch.sin(X_ANGLE))*xmax # Z-Rotation of x coords
+        zz = (-(x/xmax)*torch.sin(X_ANGLE) + (z/zmax)*torch.cos(X_ANGLE))*zmax # X-Rotation of z coords
+        
+        RADIUS_ARRAY = torch.sqrt(xx**2 + y**2 + zz**2) # Get the cube of radii R(x,y,z)
+        XY_RADIUS_ARRAY = torch.sqrt(xx**2 + y**2) # Get the cube of xy radii only R(x,y)
                 
-        return rr, xx, _y, rr_xy, torch.abs(zz)
+        return RADIUS_ARRAY, xx, y, XY_RADIUS_ARRAY, torch.abs(zz)
     
     def cube_maker(self, x, original1, original2, shape):
         """ GENERATE THE OUTPUT CUBE USING PYTORCH FUNCTIONS """  
 
-        pos3 = self.pos_ang(x[:,2].clone(),x[:,3].clone())[:,None,None,None]    ### Poition angle
+        # pos3 = self.pos_ang(x[:,2].clone(),x[:,3].clone())[:,None,None,None]    ### Poition angle
         inc3 = self.de_regularise(x[:,0].clone(),pi/18,pi/3)[:,None,None,None]  ### Inclination
         a = self.de_regularise(x[:,1].clone(),0.1,0.5)[:,None,None,None]        ### SBprof scale length
         a = a * shape / 2
-        ah = self.de_regularise(x[:,5].clone(),0.1,0.5)[:,None,None,None]        ### DM halo scale length
+        ah = self.de_regularise(x[:,2].clone(),0.1,0.5)[:,None,None,None]        ### DM halo scale length
         ah = ah * shape / 2
-        Vh = self.de_regularise(x[:,4].clone(),0.2,1)[:,None,None,None]       ### Maximum velocity allowed
+        Vh = self.de_regularise(x[:,3].clone(),0.2,1)[:,None,None,None]       ### Maximum velocity allowed
         a_z = a.clone()*0.2
         
         #a = a/a * 16
@@ -170,7 +168,7 @@ class CAE(torch.nn.Module):
                                      
         # Create radius cube __________________________________________________
 
-        rr_t, xx, yy, rr_xy, zz = self.rotation_all(self.xxx,self.yyy,self.zzz,inc3,pos3) 
+        rr_t, xx, yy, rr_xy, zz = self.rotation_all(self.xxx,self.yyy,self.zzz,inc3) 
         
         # Create sbProf cube __________________________________________________
                
@@ -186,19 +184,15 @@ class CAE(torch.nn.Module):
 #        mom0 = torch.nn.functional.interpolate(mom0,size=64,mode='bilinear')
         
         # Create velocity cube ________________________________________________
-        
-        xmax = xx.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
-        ymax = yy.max(1)[0].max(1)[0].max(1)[0][:,None,None,None] 
-        
+               
         rr_t_v = rr_t.clone()
         rr_t_v = rr_t_v / ah
             
         # Convert to LOS velocities ___________________________________________
         
-        vel = self.velocity_profile(rr_t_v)                                     
-        thetas = torch.atan2(yy/ymax, xx/xmax) - pi/2
-        inclined_thetas = torch.sin(thetas) * torch.sin(inc3) 
-        vel = vel * Vh * inclined_thetas
+        vel = self.velocity_profile(Vh, rr_t_v)                                     
+        thetas = torch.atan2(yy, xx) 
+        vel = vel * torch.sin(thetas)
                
         # Create moment 1 map _________________________________________________
         

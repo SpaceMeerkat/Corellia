@@ -25,8 +25,8 @@ model_path = '/home/corona/c1307135/Semantic_ML/Corellia/models/'
 #_____________________________________________________________________________#
 #_____________________________________________________________________________#
 
-model = CAE(6)
-model.load_state_dict(torch.load(model_path+'semantic_AE_.pt'))
+model = CAE()
+model.load_state_dict(torch.load(model_path+'semantic_AE_test_.pt'))
 model = model.cpu()
 model.train(False)
 print("Model cast to CPU")
@@ -45,7 +45,10 @@ target = np.array([r[1:] for r in results])
 
 batch = torch.tensor(batch).to(torch.float)
 batch[batch!=batch]=0
-target = torch.tensor(target).to(torch.float) 
+target = torch.tensor(target).to(torch.float)
+
+pos = target[:,0]
+a = target[:,-3]
 
 mom0s, mom1s = batch[:,0,:,:].unsqueeze(1), batch[:,1,:,:].unsqueeze(1)
 
@@ -56,7 +59,8 @@ print("Test data created")
 
 predictions = []
 for j in range(batch.shape[0]):    
-    prediction1 = model.test_encode(mom0s[j].unsqueeze(0),mom1s[j].unsqueeze(0))
+    prediction1 = model.test_encode(mom0s[j].unsqueeze(0),mom1s[j].unsqueeze(0),
+                                    pos[j].unsqueeze(0))#, a[j].unsqueeze(0))
     prediction1 = prediction1.detach().numpy()
     predictions.append(prediction1)
         

@@ -27,7 +27,7 @@ def learning_rate(initial_lr, epoch):
     """Sets the learning rate to the initial LR decayed by a factor of 10 every
     N epochs"""
     
-    lr = initial_lr * (0.975 ** (epoch// 1))
+    lr = initial_lr * (0.975 ** (epoch// 2))
     
     return lr 
 
@@ -38,27 +38,28 @@ def return_cube(i):
     """ MULTIPROCESS CREATION OF CUBES WITH VARIOUS POSITION ANGLES AND
         INCLINATIONS """
         
-    pos_ang = random.uniform(-180,180)
+    # pos_ang = random.uniform(-180,180)
     inc_ang = random.uniform(10,90)
-    a = random.uniform(0.1,0.5)
-    ah = random.uniform(0.1,0.5)
-    Vh = random.uniform(50,500)
+    a = random.uniform(0.1,0.35) #0.1-0.35
+    ah = random.uniform(0.1,0.8) #0.1-0.8
+    Vh = random.uniform(50,500) #50-500
     
-    #Vh = 500
-    #a = 0.5
-    #ah = 0.25
-    #pos_ang = 90
-    #inc = [10,20,30,40,50,60,70,80]
-    #inc_ang = inc[-2]
+    # Vh = 320
+    # a = 0.26
+    # ah = 0.18
+    # inc_ang = 2
+    pos_ang = -90
+    
     
     cube = cube_generator(a=a,pos_ang=pos_ang,
                           inc_ang=inc_ang,resolution=1000,ah=ah,
                           Vh=Vh).cube_creation()  
+       
     
-    cube[cube<=3*np.std(cube[:10,:,:])]=np.nan
+    # cube[cube<=3*np.std(cube[:10,:,:])]=np.nan
     mom0 = np.nansum(cube,axis=2) 
-    mom1 = np.nansum(cube*np.arange(-600,600,10)[None,None,:],axis=2) / mom0
-    mom1 /= 500
+    mom1 = np.nansum(cube*np.arange(-600,600,1)[None,None,:],axis=2) / mom0
+    mom1 *= (Vh/500)/np.nanmax(mom1)
     mom0 -= np.nanmin(mom0)
     mom0 /= np.nanmax(mom0)
     
@@ -66,29 +67,6 @@ def return_cube(i):
     inc_ang = np.deg2rad(inc_ang)
         
     return (mom0,mom1),pos_ang,inc_ang,a,ah,Vh
-
-#_____________________________________________________________________________#
-#_____________________________________________________________________________#
-    
-def pos_loss(output, target):
-    
-    """ LOSS FUNCTION FOR POSITION ANGLE BASED ON MINIMUM ARC SEPARATION """
-        
-    loss = torch.mean(torch.stack([ (output-target)**2,
-                                   (1-torch.abs(output-target))**2] ).min(dim=0)[0]) 
-    
-    return loss
-
-#_____________________________________________________________________________#
-#_____________________________________________________________________________#
-    
-def recover_pos(theta1,theta2):
-    
-    """ RECOVERING THE ANGLE AFTER A 2D ROTATION USING EULER MATRICES """
-    
-    angle = np.rad2deg(np.arctan2(theta1,theta2)) + 180
-    
-    return angle
 
 #_____________________________________________________________________________#
 #_____________________________________________________________________________#
@@ -116,7 +94,7 @@ def plotter(s, v, mom0, mom1, inc, pos, out_dir):
         
         plt.subplot(224)
         b1 = v[i,0,:,:]
-        plt.imshow(b1,cmap=sauron, vmax=b2.max(), vmin=b2.min())
+        plt.imshow(b1,cmap=sauron)#, vmax=b2.max(), vmin=b2.min())
         plt.colorbar(fraction=0.046, pad=0.04)
         
         plt.subplot(222)
@@ -225,7 +203,8 @@ def makebeam(xpixels, ypixels, beamSize, cellSize=1, cent=None):
 
         return trimmed_psf
 
-
+#_____________________________________________________________________________#
+#_____________________________________________________________________________#
 
 
 
