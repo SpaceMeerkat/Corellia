@@ -38,7 +38,7 @@ class cube_generator:
             self.vsize=1200
             self.cellsize=1
             self.dv=1
-            self.beamsize=[10,10,0]
+            self.beamsize=[4,4,0]
             
     def surface_brightness_profile(self):
         """ CREATE A SURFACE BRIGHTNESS PROFILE THAT SCALES WITH GALACTIC 

@@ -39,7 +39,7 @@ class CAE(torch.nn.Module):
         self.conv7 = torch.nn.Conv2d(64,128,3,padding=1)
 
         self.pool = torch.nn.MaxPool2d(2)
-        self.pool2 = torch.nn.AvgPool3d(4)
+        # self.pool2 = torch.nn.AvgPool3d(4)
 
         self.lc1 = torch.nn.Linear(2048,256)
         self.lc2 = torch.nn.Linear(256,2)
@@ -49,9 +49,9 @@ class CAE(torch.nn.Module):
         self.hardtanh = torch.nn.Hardtanh(min_val=-1,max_val=1.)
         self.drop = torch.nn.Dropout(p=0.1)
         
-        self.weights = makebeam(9,9,4)
-        self.weights = self.weights.unsqueeze(0).unsqueeze(0).unsqueeze(0)
-        self.weights = torch.nn.Parameter(self.weights,requires_grad=False)
+        # self.weights = makebeam(9,9,4)
+        # self.weights = self.weights.unsqueeze(0).unsqueeze(0).unsqueeze(0)
+        # self.weights = torch.nn.Parameter(self.weights,requires_grad=False)
        
     def BRIGHTNESS_encoder(self,x):
         """ FEATURE EXTRACTION THROUGH CONVOLUTIONAL LAYERS """
@@ -131,7 +131,7 @@ class CAE(torch.nn.Module):
         tensor=tensor+minimum
         return tensor
         
-    def regularise(self,array):
+    def regularise(self,array,minimum,maximum):
         """ NORMALISES THE INPUT ARRAYS INTO THE RANGE [0,1] """
         
         array = array - array.min(1)[0].min(1)[0].min(1)[0][:,None,None,None]
@@ -141,6 +141,7 @@ class CAE(torch.nn.Module):
        
     def rotation_all(self,x,y,z,X_ANGLE):
         """ A function for rotating about the z and then x axes """
+        
         xmax = x.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
         zmax = z.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
         
@@ -152,37 +153,43 @@ class CAE(torch.nn.Module):
                 
         return RADIUS_ARRAY, xx, y, XY_RADIUS_ARRAY, torch.abs(zz)
     
-    def cube_maker(self, x, BRIGHTNESS_INPUT, VELOCITY_INPUT, Z_ANGLE, ah,
-                   phi,a,V,shape):
-        """ GENERATE THE OUTPUT CUBE USING PYTORCH FUNCTIONS """  
-
-        # Z_ANGLE = self.pos_ang(x[:,2].clone(),x[:,3].clone())[:,None,None,None]    ### Poition angle
-        X_ANGLE = self.de_regularise(x[:,0].clone(),pi/18,pi/2)[:,None,None,None]   ### Inclination
-        SCALE_LENGTH = self.de_regularise(x[:,1].clone(),0,0.55)[:,None,None,None]       ### SBprof scale length
-        SCALE_LENGTH = SCALE_LENGTH * shape / 2
-        V_SCALE_LENGTH = self.de_regularise(x[:,2].clone(),0.1,0.8)[:,None,None,None]     ### DM halo scale length
-        V_SCALE_LENGTH = V_SCALE_LENGTH * shape/2
-        MAX_VELOCITY = self.de_regularise(x[:,3].clone(),0.1,1)[:,None,None,None]       ### Maximum velocity allowed
-        a_z = V_SCALE_LENGTH.detach()*0 + 1                                           ### Z brightness scale length (keep it low for a disk)
-        
-# =============================================================================
-#         Uncomment these to pass forward the target parameters rather than 
-#         learned parameters, for debugging and covariance testing.
-# =============================================================================
+    def get_params(self, x, Z_ANGLE, shape):
+        """ GENERATE THE OUTPUT CUBE USING PYTORCH FUNCTIONS """ 
         
         Z_ANGLE = Z_ANGLE.clone()[:,None,None,None]
+        X_ANGLE = self.de_regularise(x[:,0].clone(),pi/18,pi/2)[:,None,None,None]   ### Inclination
+        SCALE_LENGTH = self.de_regularise(x[:,1].clone(),0.1,0.35)[:,None,None,None]       ### SBprof scale length
+        SCALE_LENGTH = SCALE_LENGTH * shape / 2
+        V_SCALE_LENGTH = self.de_regularise(x[:,2].clone(),0.01,0.8)[:,None,None,None]     ### DM halo scale length
+        V_SCALE_LENGTH = V_SCALE_LENGTH * shape/2
+        MAX_VELOCITY = self.de_regularise(x[:,3].clone(),0.1,1)[:,None,None,None]       ### Maximum velocity allowed
+        a_z = V_SCALE_LENGTH.detach()*0 + 1      ### Z brightness scale length (keep it low for a disk)
+        
+        # =============================================================================
+        #         Uncomment these to pass forward the target parameters rather than 
+        #         learned parameters, for debugging and covariance testing.
+        # =============================================================================
+        
         # V_SCALE_LENGTH = ah.clone()[:,None,None,None] * shape/2
         # X_ANGLE = phi.clone()[:,None,None,None]
         # MAX_VELOCITY = V.clone()[:,None,None,None] / 500
         # SCALE_LENGTH = a.clone()[:,None,None,None] * shape/2
         # a_z = SCALE_LENGTH.detach()*0 + 1
-        
-# =============================================================================
-                                             
-        # Create radius cube __________________________________________________
 
-        rr_t, xx, yy, XY_RADIUS_ARRAY, zz = self.rotation_all(self.xxx,self.yyy,self.zzz,X_ANGLE) 
+        return Z_ANGLE, X_ANGLE, SCALE_LENGTH, V_SCALE_LENGTH, MAX_VELOCITY, a_z
+
+                
+    def cube_maker(self,Z_ANGLE, X_ANGLE, SCALE_LENGTH, V_SCALE_LENGTH, MAX_VELOCITY, a_z,
+                   BRIGHTNESS_INPUT, VELOCITY_INPUT):
+                                                     
+        # Create radius cube __________________________________________________
         
+        xxx = self.xxx[:Z_ANGLE.shape[0]]
+        yyy = self.yyy[:Z_ANGLE.shape[0]]
+        zzz = self.zzz[:Z_ANGLE.shape[0]]
+
+        rr_t, xx, yy, XY_RADIUS_ARRAY, zz = self.rotation_all(xxx,yyy,zzz,X_ANGLE) 
+                
         # Create brightness cube ______________________________________________
                
         sbProf = self.create_brightness_values(XY_RADIUS_ARRAY, SCALE_LENGTH, zz, a_z)
@@ -191,12 +198,12 @@ class CAE(torch.nn.Module):
 #         Adding in a convolution for beam effects
 # =============================================================================
         
-        sbProf = sbProf.unsqueeze(1)
-        conv = torch.nn.Conv3d(1,1,9,padding=[0,4,4],bias=False)
-        with torch.no_grad():
-            conv.weight = torch.nn.Parameter(self.weights,requires_grad=False)            
-        sbProf = conv(sbProf)
-        sbProf = sbProf.squeeze(1)
+        # sbProf = sbProf.unsqueeze(1)
+        # conv = torch.nn.Conv3d(1,1,9,padding=[0,4,4],bias=False)
+        # with torch.no_grad():
+        #     conv.weight = torch.nn.Parameter(self.weights,requires_grad=False)            
+        # sbProf = conv(sbProf)
+        # sbProf = sbProf.squeeze(1)
 
 # =============================================================================
             
@@ -204,8 +211,10 @@ class CAE(torch.nn.Module):
     
         BRIGHTNESS = sbProf.sum(axis=3)
         BRIGHTNESS = BRIGHTNESS.unsqueeze(1)
-        BRIGHTNESS = self.regularise(BRIGHTNESS)
-        
+        BRIGHTNESS_min = BRIGHTNESS.min(1)[0].min(1)[0].min(1)[0][:,None,None,None]
+        BRIGHTNESS_max = BRIGHTNESS.max(1)[0].max(1)[0].max(1)[0][:,None,None,None]
+        BRIGHTNESS = self.regularise(BRIGHTNESS, BRIGHTNESS_min, BRIGHTNESS_max)
+                
         # Create VELOCITY cube ________________________________________________
         
         rr_t_v = XY_RADIUS_ARRAY.detach()
@@ -239,29 +248,38 @@ class CAE(torch.nn.Module):
 
         return BRIGHTNESS, VELOCITY, X_ANGLE, Z_ANGLE, vmax
     
-    def test_encode(self,x1,x2,Z_ANGLE):
+    def test_encode(self, x1, x2, Z_ANGLE):
         """ CREATE ENCODINGS FOR TESTING AND DEBUGGING """
         
         output1 = self.BRIGHTNESS_encoder(x1)
         output2 = self.VELOCITY_encoder(x2)
         output = self.encoder_linear(output1,output2)
-        #Z_ANGLE = self.pos_ang(output[:,2].clone(),output[:,3].clone())[:,None,None] 
         Z_ANGLE = Z_ANGLE.clone()[:,None,None,None]
         X_ANGLE = self.de_regularise(output[:,0].clone(),pi/18,pi/2)[:,None,None]  
-        SCALE_LENGTH = self.de_regularise(output[:,1].clone(),0,0.55)[:,None,None] 
-        # SCALE_LENGTH = a[:,None,None]        
-        V_SCALE_LENGTH = self.de_regularise(output[:,2].clone(),0.1,0.8)[:,None,None]       
+        SCALE_LENGTH = self.de_regularise(output[:,1].clone(),0.1,0.35)[:,None,None] 
+        V_SCALE_LENGTH = self.de_regularise(output[:,2].clone(),0.01,0.8)[:,None,None]       
         MAX_VELOCITY = self.de_regularise(output[:,3].clone(),50,500)[:,None,None]       
         output = torch.tensor([Z_ANGLE,X_ANGLE,SCALE_LENGTH,V_SCALE_LENGTH,MAX_VELOCITY])
         return output
+    
+    def test_images(self,x1,x2,Z_ANGLE, X_ANGLE, SCALE_LENGTH, V_SCALE_LENGTH, MAX_VELOCITY, a_z, shape):
+        """ TAKES HARDCODED EMBEDDINGS AND GENERATES IMAGES FOR OUTPUTS FOR THEM """
         
-    def forward(self, x1, x2, pos, ah,phi,a,v):
+        SCALE_LENGTH *= shape/2
+        V_SCALE_LENGTH *= shape/2
+                 
+        BRIGHTNESS, VELOCITY, X_ANGLE, Z_ANGLE, vmax = self.cube_maker(Z_ANGLE, X_ANGLE, SCALE_LENGTH, 
+                                                                       V_SCALE_LENGTH, MAX_VELOCITY, a_z, x1, x2)
+        return BRIGHTNESS, VELOCITY, vmax
+        
+    def forward(self, x1, x2, pos):
         """ CREATE SCALE_LENGTH FORWARD PASS THROUGH THE REQUIRED MODEL FUNCTIONS """
         
         output1 = self.BRIGHTNESS_encoder(x1)
         output2 = self.VELOCITY_encoder(x2)
         output = self.encoder_linear(output1,output2)
-        output = self.cube_maker(output,x1,x2,pos,ah,phi,a,v,shape=64)
+        Z_ANGLE, X_ANGLE, SCALE_LENGTH, V_SCALE_LENGTH, MAX_VELOCITY, a_z = self.get_params(output,pos,shape=64)
+        output = self.cube_maker(Z_ANGLE, X_ANGLE, SCALE_LENGTH, V_SCALE_LENGTH, MAX_VELOCITY, a_z, x1, x2)
         return output
     
 #=============================================================================#

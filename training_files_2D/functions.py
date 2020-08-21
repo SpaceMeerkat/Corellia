@@ -4,10 +4,17 @@
 Created on Thu Oct 10 15:59:24 2019
 
 @author: SpaceMeerkat
+
+This script is a helper script containing optional functions for the training
+procedure as well as required functions such as the adaptive learning rate.
+
+The script also contains makebeam from the KinMS package in order to make 
+debugging and tinkering easier. 
 """
 
-#_____________________________________________________________________________#
-#_____________________________________________________________________________#
+# =============================================================================
+# Import relevant packages
+# =============================================================================
 
 from astropy.nddata.utils import Cutout2D
 import matplotlib
@@ -20,8 +27,9 @@ import torch
 from cube_generator import cube_generator
 from sauron_colormap import sauron
 
-#_____________________________________________________________________________#
-#_____________________________________________________________________________#
+# =============================================================================
+# Adaptive learning rate function
+# =============================================================================
 
 def learning_rate(initial_lr, epoch):   
     """Sets the learning rate to the initial LR decayed by a factor of 10 every
@@ -31,8 +39,9 @@ def learning_rate(initial_lr, epoch):
     
     return lr 
 
-#_____________________________________________________________________________#
-#_____________________________________________________________________________#
+# =============================================================================
+# Moment map generating function 
+# =============================================================================
 
 def return_cube(i):
     """ MULTIPROCESS CREATION OF CUBES WITH VARIOUS POSITION ANGLES AND
@@ -41,13 +50,9 @@ def return_cube(i):
     # pos_ang = random.uniform(-180,180)
     inc_ang = random.uniform(10,90)
     a = random.uniform(0.1,0.35) #0.1-0.35
-    ah = random.uniform(0.1,0.8) #0.1-0.8
+    ah = random.uniform(0.01,0.8) #0.1-0.8
     Vh = random.uniform(50,500) #50-500
     
-    # Vh = 320
-    # a = 0.26
-    # ah = 0.18
-    # inc_ang = 2
     pos_ang = -90
     
     
@@ -68,9 +73,9 @@ def return_cube(i):
         
     return (mom0,mom1),pos_ang,inc_ang,a,ah,Vh
 
-#_____________________________________________________________________________#
-#_____________________________________________________________________________#
-    
+# =============================================================================
+# Plotting function for the inputs/outputs during training
+# =============================================================================
 
 def plotter(s, v, mom0, mom1, inc, pos, out_dir):    
     """ PLOTTING THE PREDICTED AND TRUE VELOCITY FIELDS """
@@ -94,12 +99,12 @@ def plotter(s, v, mom0, mom1, inc, pos, out_dir):
         
         plt.subplot(224)
         b1 = v[i,0,:,:]
-        plt.imshow(b1,cmap=sauron)#, vmax=b2.max(), vmin=b2.min())
+        plt.imshow(b1,cmap=sauron, vmax=b2.max(), vmin=b2.min())
         plt.colorbar(fraction=0.046, pad=0.04)
         
         plt.subplot(222)
         b = s[i,0,:,:]
-        plt.imshow(b,cmap='magma')
+        plt.imshow(b,cmap='magma',vmax=1,vmin=0)
         plt.colorbar(fraction=0.046, pad=0.04)
         plt.title('PREDICTED: %.2f' %inc[i])
     
@@ -114,8 +119,109 @@ def plotter(s, v, mom0, mom1, inc, pos, out_dir):
     
     return
 
-#_____________________________________________________________________________#
-#_____________________________________________________________________________#
+# =============================================================================
+# A plotter showing the WISDOM inputs/outputs and learned physicsl functions
+# =============================================================================
+
+def WISDOM_plotter(x,mom0_t,mom1_t,mom0_p,mom1_p,parameters,errors,i,vcirc,save_path):
+    """ PLOTTING THE WISDOM GENERATED FIELDS """
+    
+    fig, axs = plt.subplots(2,3, figsize = (15,7.5))
+           
+    x_axis = np.linspace(0,x[i],32)
+    paper_vcirc = vcirc[i]
+    
+    axs[0,0].set_title("Inputs")
+    axs[0,1].set_title("Outputs")
+    axs[0,2].set_title("Predicted profiles")
+    
+    axs[0,2].set_xlabel(r"Radius ($^{\prime\prime}$)")
+    axs[0,2].set_ylabel("Brightness")
+    
+    axs[1,2].set_xlabel(r"Radius ($^{\prime\prime}$)")
+    axs[1,2].set_ylabel("V sin(i) $km\,s^{-1}$")
+        
+    im0 = axs[0,0].imshow(mom0_t[i],cmap='magma',vmin=0,vmax=1)
+    fig.colorbar(im0,label='Normalised brightness',fraction=0.046, pad=0.04, ax=axs[0,0])
+            
+    im0b = axs[0,1].imshow(mom0_p[i],cmap='magma',vmin=0,vmax=1)
+    fig.colorbar(im0b,label='Normalised brightness',fraction=0.046, pad=0.04, ax=axs[0,1])
+    inclination, i_err = np.rad2deg(parameters[i,1]), np.rad2deg(errors[i,1])
+    axs[0,1].text(5,5,'i = %.3f' % inclination + r' $\pm$ %.3f' % i_err + r'$^{\circ}$',color='white')
+            
+    parameters[i,2] *= x[i]
+    errors[i,2] *= x[i]
+    brightness = np.exp(-x_axis/parameters[i,2])
+    up = np.exp(-x_axis/(parameters[i,2]-errors[i,2]))
+    down = np.exp(-x_axis/(parameters[i,2]+errors[i,2]))
+    axs[0,2].plot(x_axis,brightness,'k--')
+    axs[0,2].fill_between(x_axis,down,up,color='grey',alpha=0.5)
+    axs[0,2].text(x[i]/2,0.9,
+                  r'a$_{I}$ = %.3f' % np.float64(parameters[i,2]*x[i]) + r' $\pm$ %.3f' % np.float64(errors[i,2]*x[i]) +r'$^{\prime\prime}$',
+                  color='k')
+            
+    sb_t = np.abs(mom0_t.copy())
+    sb_t[sb_t<=0] = np.nan
+    left, right = sb_t[i,32:,31:33], np.flip(sb_t[i,:32,31:33])
+    sb_t = np.vstack([left.T,right.T])
+    sb_t = np.nanmean(sb_t,axis=0)
+    axs[0,2].plot(x_axis,sb_t,'b--')
+       
+    mom1_t[i] *= 500
+    vmax = np.nanmax(np.abs(mom1_t[i]))
+    im1 = axs[1,0].imshow(mom1_t[i],vmin=-vmax,vmax=vmax,cmap=sauron)
+    fig.colorbar(im1,label='$V_{los} \quad km\,s^{-1}$',fraction=0.046, pad=0.04, ax=axs[1,0])
+    
+    im1b = axs[1,1].imshow(mom1_p[i],vmin=-vmax,vmax=vmax,cmap=sauron)
+    fig.colorbar(im1b,label='$V_{los} \quad km\,s^{-1}$',fraction=0.046, pad=0.04, ax=axs[1,1])
+        
+    parameters[i,3] *= x[i]
+    errors[i,3] *= x[i]
+        
+    V = parameters[i,4]
+    V_err = errors[i,4]
+    
+    vel = V * (2/np.pi) * np.arctan(x_axis/parameters[i,3])
+    v_up = (V+V_err) * (2/np.pi) * np.arctan(x_axis/(parameters[i,3]-errors[i,3]))
+    v_down = (V-V_err) * (2/np.pi) * np.arctan(x_axis/(parameters[i,3]+errors[i,3]))
+    axs[1,2].plot(x_axis,vel,'k--',label='SKiNet')
+    axs[1,2].fill_between(x_axis,v_down,v_up,color='grey',alpha=0.5)
+    
+    axs[1,2].plot(x_axis,paper_vcirc,'r--',label='MGE model')
+    
+    axs[1,2].text(x[i]/3,25,
+                  r'a$_{V}$ = %.3f' % np.float64(parameters[i,3]*x[i]) + r' $\pm$ %.3f' % np.float64(errors[i,3]*x[i]) +r'$^{\prime\prime}$',
+                  color='k')
+    axs[1,2].text(x[i]/3,10,
+                  r'V sin(i)$_{max}$ = %.1f' % V + r' $\pm$ %.1f' % V_err + ' km$\, s^{-1}$', color='k')
+            
+    # vel_t = np.max(mom1_t[i,32:,31:33],axis=1)
+    
+    vel_t = np.abs(mom1_t.copy())
+    vel_t[vel_t<=0] = np.nan
+    left, right = vel_t[i,32:,31:33], np.flip(vel_t[i,:32,31:33])
+    vel_t = np.vstack([left.T,right.T])
+    vel_t = np.nanmean(vel_t,axis=0)
+    axs[1,2].plot(x_axis,vel_t,'b--',label=r'Major-axis$_{true}$')
+    
+    vel_p = np.abs(mom1_p.numpy())
+    vel_p[vel_p<=0] = np.nan
+    left, right = vel_p[i,32:,31:33], np.flip(vel_p[i,:32,31:33])
+    vel_p = np.vstack([left.T,right.T])
+    vel_p = np.nanmean(vel_p,axis=0)
+    axs[1,2].plot(x_axis,vel_p,'g--',label=r'Major-axis$_{pred}$')
+    
+    axs[1,2].legend(loc='center right')
+    
+    fig.tight_layout()
+    
+    plt.savefig(save_path)
+    
+    return
+
+# =============================================================================
+# Makebeam taken from the KinMS package
+# =============================================================================
 
 def makebeam(xpixels, ypixels, beamSize, cellSize=1, cent=None):
         """
@@ -203,8 +309,9 @@ def makebeam(xpixels, ypixels, beamSize, cellSize=1, cent=None):
 
         return trimmed_psf
 
-#_____________________________________________________________________________#
-#_____________________________________________________________________________#
+# =============================================================================
+# End of script
+# =============================================================================
 
 
 

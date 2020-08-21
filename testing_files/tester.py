@@ -60,7 +60,7 @@ print("Test data created")
 predictions = []
 for j in range(batch.shape[0]):    
     prediction1 = model.test_encode(mom0s[j].unsqueeze(0),mom1s[j].unsqueeze(0),
-                                    pos[j].unsqueeze(0))#, a[j].unsqueeze(0))
+                                    pos[j].unsqueeze(0))
     prediction1 = prediction1.detach().numpy()
     predictions.append(prediction1)
         
